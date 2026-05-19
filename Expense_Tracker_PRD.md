@@ -28,23 +28,32 @@
 | Database schema + RLS | — | Full schema, all tables RLS-enabled, seed data |
 | Profile settings | — | Display name, monthly budget |
 | Friend ledger | — | Per-friend chronological expense/share history |
+| Recurring expenses | P1-11 | Full CRUD UI in Settings, cadence selection, active/inactive toggle |
+| Monthly CSV export | P1-14 | Download button in expenses list, route handler at /api/export |
+| Settlement recording | P1-13 | Settle Up dialog in friend ledger page, FIFO share marking |
+| Receipt upload | P1-12 | Upload/view/delete in expense detail, Supabase Storage with RLS |
+| Budget tracking | P2-16 | Progress bar on dashboard "Spent" card, color-coded overspend warning |
+| Yearly insights | P2-18 | /insights page with yearly bar chart, category/PM breakdown, MoM table |
 
 ### Pending
 
 | Feature | User Story | Priority | Notes |
 |---|---|---|---|
-| Recurring expenses | P1-11 | P1 | Schema exists (`recurring_expenses` table), no UI yet |
-| Receipt upload | P1-12 | P1 | Supabase Storage integration needed |
-| Settlement recording | P1-13 | P1 | Schema exists (`settlements` table), no UI/flow yet |
-| Monthly CSV export | P1-14 | P1 | — |
-| PWA / offline | — | P1 | Service worker, manifest, background sync |
-| 2FA / MFA | — | P1 | Supabase MFA is available, enrolment UI needed |
-| Magic link login | — | P1 | Supabase supports it, UI not wired |
-| Budgets + alerts | P2-16 | P2 | — |
-| Receipt OCR | P2-17 | P2 | — |
-| Yearly insights | P2-18 | P2 | — |
-| Capacitor Android | — | Phase 3 | — |
-| Notifications | — | Phase 3 | Web push via Edge Functions |
+| Notifications | — | Phase 3 | Web push for large expenses, recurring reminders |
+
+### Discarded
+
+| Feature | Reason |
+|---|---|
+| Capacitor Android | PWA provides installability, offline, and camera — sufficient for single-user app |
+
+### Recently Completed
+
+| Feature | User Story | Notes |
+|---|---|---|
+| PWA / offline | — | Service worker, manifest, icons, installable from browser |
+| Receipt OCR | P2-17 | Gemini 2.5 Flash vision, auto-fill form, HEIC support |
+| Quick-add FAB | §5.2 | Floating button on every screen, minimal modal |
 
 ---
 
@@ -638,11 +647,11 @@ Three viable paths, ranked by effort vs payoff:
 - Monthly dashboard.
 
 ### Phase 2 — Polish (Week 4) ⏳ In Progress
-- Receipts upload.
-- **Monthly ledger CSV export** (one file per month: expenses + shares + settlements). Future hook for CSV re-import.
+- ~~Receipts upload.~~ (pending)
+- ~~**Monthly ledger CSV export**~~ ✅ (route handler + download button in expense list).
 - PWA install + offline shell.
 - 2FA / MFA enrolment.
-- Recurring expenses.
+- ~~Recurring expenses.~~ ✅ (Settings UI with full CRUD).
 
 ### Phase 3 — Android wrapper (Week 5)
 - Capacitor setup.

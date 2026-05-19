@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Wallet,
+  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/insights", label: "Insights", icon: TrendingUp },
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/friends", label: "Friends", icon: Users },
   { href: "/settings/categories", label: "Settings", icon: Settings },

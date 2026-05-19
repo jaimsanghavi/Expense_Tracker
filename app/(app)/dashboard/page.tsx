@@ -39,8 +39,9 @@ export default async function DashboardPage({
   const monthStart = monthStartUTC(monthDate);
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const [dashboardRes, expensesRes, friendsRes] = await Promise.all([
+  const [dashboardRes, expensesRes, friendsRes, profileRes] = await Promise.all([
     supabase.rpc("get_month_dashboard", {
       p_month_start: monthStart.toISOString(),
     }),
@@ -54,6 +55,11 @@ export default async function DashboardPage({
       .select("friend_id, friend_name, net_owed_to_me_paise")
       .order("net_owed_to_me_paise", { ascending: false })
       .limit(3),
+    supabase
+      .from("profiles")
+      .select("monthly_budget_paise")
+      .eq("id", user!.id)
+      .single(),
   ]);
 
   const dashboard: DashboardData = dashboardRes.data ?? {
@@ -78,6 +84,7 @@ export default async function DashboardPage({
       recentExpenses={recentExpenses}
       friendBalances={friendBalances}
       currentMonth={monthValue}
+      monthlyBudgetPaise={profileRes.data?.monthly_budget_paise ?? null}
     />
   );
 }

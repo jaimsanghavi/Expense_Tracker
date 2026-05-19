@@ -23,6 +23,13 @@ async function getFriends() {
 }
 
 export default async function NewExpensePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
   const [categories, paymentMethods, friends] = await Promise.all([
     getCategories(),
     getPaymentMethods(),
@@ -36,6 +43,7 @@ export default async function NewExpensePage() {
         categories={categories}
         paymentMethods={paymentMethods}
         friends={friends}
+        userId={user.id}
       />
     </div>
   );

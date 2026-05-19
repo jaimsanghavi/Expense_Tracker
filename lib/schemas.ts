@@ -74,3 +74,18 @@ export const settlementSchema = z.object({
   settled_at: z.string().datetime().optional(),
 });
 export type SettlementInput = z.infer<typeof settlementSchema>;
+
+// ─── Recurring Expense ──────────────────────────────────────
+export const cadenceEnum = z.enum(["daily", "weekly", "monthly", "yearly"]);
+export type Cadence = z.infer<typeof cadenceEnum>;
+
+export const recurringExpenseSchema = z.object({
+  amount_paise: z.number().int().positive(),
+  category_id: z.string().uuid().nullable(),
+  payment_method_id: z.string().uuid().nullable(),
+  cadence: cadenceEnum,
+  next_run_at: z.string().datetime(),
+  note: z.string().max(500).optional().nullable(),
+  is_active: z.boolean().default(true),
+});
+export type RecurringExpenseInput = z.infer<typeof recurringExpenseSchema>;

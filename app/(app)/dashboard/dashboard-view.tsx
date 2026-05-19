@@ -59,6 +59,7 @@ interface DashboardViewProps {
   recentExpenses: RecentExpense[];
   friendBalances: FriendBalance[];
   currentMonth: string;
+  monthlyBudgetPaise: number | null;
 }
 
 const PM_COLORS: Record<string, string> = {
@@ -75,6 +76,7 @@ export function DashboardView({
   recentExpenses,
   friendBalances,
   currentMonth,
+  monthlyBudgetPaise,
 }: DashboardViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,6 +127,35 @@ export function DashboardView({
           </CardHeader>
           <CardContent className="relative">
             <p className="text-2xl font-bold tabular-nums">{formatINR(dashboard.total_spent_paise)}</p>
+            {monthlyBudgetPaise != null && monthlyBudgetPaise > 0 && (() => {
+              const pct = (dashboard.total_spent_paise / monthlyBudgetPaise) * 100;
+              const barWidth = Math.min(pct, 100);
+              const barColor =
+                pct > 100
+                  ? "oklch(0.63 0.25 29)"
+                  : pct >= 75
+                    ? "oklch(0.80 0.18 84)"
+                    : "oklch(0.72 0.19 142)";
+              const overBy = dashboard.total_spent_paise - monthlyBudgetPaise;
+              return (
+                <div className="mt-3 space-y-1.5">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${barWidth}%`, backgroundColor: barColor }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {formatINR(dashboard.total_spent_paise)} of {formatINR(monthlyBudgetPaise)} budget
+                  </p>
+                  {overBy > 0 && (
+                    <p className="text-xs font-medium" style={{ color: "oklch(0.63 0.25 29)" }}>
+                      Over budget by {formatINR(overBy)}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Receipt, Users } from "lucide-react";
+import { Plus, Search, Receipt, Users, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -153,14 +153,13 @@ export function ExpenseList({
             setCategoryId(v);
             applyFilters({ categoryId: v === "all" ? "" : v });
           }}
+          items={[
+            { value: "all", label: "All Categories" },
+            ...categories.map((c) => ({ value: c.id, label: c.name })),
+          ]}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Category">
-              {(value: string | null) => {
-                if (!value || value === "all") return "All Categories";
-                return categories.find((c) => c.id === value)?.name ?? "Category";
-              }}
-            </SelectValue>
+            <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
@@ -178,14 +177,13 @@ export function ExpenseList({
             setPaymentMethodId(v);
             applyFilters({ paymentMethodId: v === "all" ? "" : v });
           }}
+          items={[
+            { value: "all", label: "All Methods" },
+            ...paymentMethods.map((pm) => ({ value: pm.id, label: pm.name })),
+          ]}
         >
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Payment Method">
-              {(value: string | null) => {
-                if (!value || value === "all") return "All Methods";
-                return paymentMethods.find((pm) => pm.id === value)?.name ?? "Payment Method";
-              }}
-            </SelectValue>
+            <SelectValue placeholder="Payment Method" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Methods</SelectItem>
@@ -208,6 +206,17 @@ export function ExpenseList({
             className="pl-8"
           />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          title="Export CSV"
+          onClick={() => {
+            const exportMonth = month || new Date().toISOString().slice(0, 7);
+            window.open(`/api/export?month=${exportMonth}`, "_blank");
+          }}
+        >
+          <Download className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Expense list grouped by date */}

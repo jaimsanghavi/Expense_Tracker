@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { expenseSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
+import { sendPushToUser } from "@/lib/push";
+import { formatINR } from "@/lib/money";
 
 export async function getExpenses(filters?: {
   month?: string;
@@ -102,7 +104,7 @@ export async function createExpense(formData: FormData) {
   }
 
   if (isSplit && parsed.data.shares && parsed.data.shares.length > 0) {
-    const { error } = await supabase.rpc("create_expense_with_shares", {
+    const { data: expenseId, error } = await supabase.rpc("create_expense_with_shares", {
       p_user_id: user.id,
       p_amount_paise: parsed.data.amount_paise,
       p_spent_at: parsed.data.spent_at,
@@ -116,8 +118,16 @@ export async function createExpense(formData: FormData) {
     });
 
     if (error) return { error: { amount: [error.message] } };
+
+    revalidatePath("/expenses");
+    revalidatePath("/dashboard");
+
+    // Trigger large expense notification (non-blocking)
+    triggerLargeExpenseNotification(user.id, parsed.data.amount_paise, parsed.data.merchant ?? null);
+
+    return { error: null, expenseId: expenseId as string };
   } else {
-    const { error } = await supabase.from("expenses").insert({
+    const { data, error } = await supabase.from("expenses").insert({
       user_id: user.id,
       amount_paise: parsed.data.amount_paise,
       spent_at: parsed.data.spent_at,
@@ -127,14 +137,52 @@ export async function createExpense(formData: FormData) {
       note: parsed.data.note,
       is_split: false,
       paid_by: null,
-    });
+    }).select("id").single();
 
     if (error) return { error: { amount: [error.message] } };
-  }
 
-  revalidatePath("/expenses");
-  revalidatePath("/dashboard");
-  return { error: null };
+    revalidatePath("/expenses");
+    revalidatePath("/dashboard");
+
+    // Trigger large expense notification (non-blocking)
+    triggerLargeExpenseNotification(user.id, parsed.data.amount_paise, parsed.data.merchant ?? null);
+
+    return { error: null, expenseId: data.id as string };
+  }
+}
+
+async function triggerLargeExpenseNotification(
+  userId: string,
+  amountPaise: number,
+  merchant: string | null
+) {
+  try {
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("notify_large_expense, notify_large_expense_threshold_paise")
+      .eq("id", userId)
+      .single();
+
+    if (
+      !profile?.notify_large_expense ||
+      amountPaise < (profile.notify_large_expense_threshold_paise ?? 500000)
+    ) {
+      return;
+    }
+
+    const amount = formatINR(amountPaise);
+    await sendPushToUser(userId, {
+      title: "Large Expense Alert",
+      body: merchant
+        ? `${amount} spent at ${merchant}`
+        : `${amount} expense recorded`,
+      tag: "large-expense",
+      url: "/expenses",
+    });
+  } catch {
+    // Non-critical — don't fail the expense creation
+  }
 }
 
 export async function updateExpense(id: string, formData: FormData) {
@@ -208,4 +256,75 @@ export async function deleteExpense(id: string) {
 
   revalidatePath("/expenses");
   revalidatePath("/dashboard");
+}
+
+export async function updateExpenseReceipt(
+  expenseId: string,
+  receiptPath: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("expenses")
+    .update({ receipt_path: receiptPath })
+    .eq("id", expenseId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/expenses/${expenseId}`);
+  return { error: null };
+}
+
+export async function removeExpenseReceipt(expenseId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  // Get the current receipt path so we can delete the file
+  const { data: expense } = await supabase
+    .from("expenses")
+    .select("receipt_path")
+    .eq("id", expenseId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (expense?.receipt_path) {
+    await supabase.storage.from("receipts").remove([expense.receipt_path]);
+  }
+
+  const { error } = await supabase
+    .from("expenses")
+    .update({ receipt_path: null })
+    .eq("id", expenseId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/expenses/${expenseId}`);
+  return { error: null };
+}
+
+export async function getReceiptUrl(receiptPath: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  const { data, error } = await supabase.storage
+    .from("receipts")
+    .createSignedUrl(receiptPath, 3600); // 1 hour
+
+  if (error) return { url: null, error: error.message };
+  return { url: data.signedUrl, error: null };
 }

@@ -3,6 +3,7 @@ import { getExpense } from "./actions";
 import { getCategories } from "@/app/(app)/settings/categories/actions";
 import { getPaymentMethods } from "@/app/(app)/settings/payment-methods/actions";
 import { ExpenseDetail } from "./expense-detail";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ExpenseDetailPage({
   params,
@@ -10,6 +11,13 @@ export default async function ExpenseDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) notFound();
 
   let expense;
   try {
@@ -29,6 +37,7 @@ export default async function ExpenseDetailPage({
         expense={expense}
         categories={categories}
         paymentMethods={paymentMethods}
+        userId={user.id}
       />
     </div>
   );

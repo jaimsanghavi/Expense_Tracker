@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppSidebar } from "@/components/app-sidebar";
+import { QuickAddFab } from "@/components/quick-add-fab";
+import { getCategories } from "@/app/(app)/settings/categories/actions";
 
 export default async function AppLayout({
   children,
@@ -16,6 +18,8 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const categories = await getCategories();
+
   return (
     <div className="flex h-screen">
       <AppSidebar />
@@ -24,6 +28,7 @@ export default async function AppLayout({
           {children}
         </div>
       </main>
+      <QuickAddFab categories={categories} />
     </div>
   );
 }

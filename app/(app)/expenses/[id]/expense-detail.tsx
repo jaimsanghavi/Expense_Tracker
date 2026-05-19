@@ -29,6 +29,7 @@ import { formatINR, toRupees } from "@/lib/money";
 import { formatDateTimeIST } from "@/lib/dates";
 import { updateExpense, deleteExpense } from "../actions";
 import { updateShareStatus } from "./actions";
+import { ReceiptUpload } from "../receipt-upload";
 
 type Share = {
   id: string;
@@ -46,6 +47,7 @@ type Expense = {
   spent_at: string;
   merchant: string | null;
   note: string | null;
+  receipt_path: string | null;
   is_split: boolean;
   paid_by: string | null;
   categories: { id: string; name: string; color: string | null; icon: string | null } | null;
@@ -60,12 +62,14 @@ interface ExpenseDetailProps {
   expense: Expense;
   categories: Category[];
   paymentMethods: PaymentMethod[];
+  userId: string;
 }
 
 export function ExpenseDetail({
   expense,
   categories,
   paymentMethods,
+  userId,
 }: ExpenseDetailProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -221,7 +225,11 @@ export function ExpenseDetail({
 
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select value={categoryId} onValueChange={(v) => v && setCategoryId(v)}>
+              <Select
+                value={categoryId}
+                onValueChange={(v) => v && setCategoryId(v)}
+                items={categories.map((c) => ({ value: c.id, label: c.name }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -237,7 +245,11 @@ export function ExpenseDetail({
 
             <div className="space-y-2">
               <Label>Payment Method</Label>
-              <Select value={paymentMethodId} onValueChange={(v) => v && setPaymentMethodId(v)}>
+              <Select
+                value={paymentMethodId}
+                onValueChange={(v) => v && setPaymentMethodId(v)}
+                items={paymentMethods.map((pm) => ({ value: pm.id, label: pm.name }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select method" />
                 </SelectTrigger>
@@ -339,6 +351,13 @@ export function ExpenseDetail({
           </CardContent>
         </Card>
       )}
+
+      {/* Receipt */}
+      <ReceiptUpload
+        expenseId={expense.id}
+        userId={userId}
+        existingPath={expense.receipt_path}
+      />
 
       {/* Shares section */}
       {expense.is_split && expense.expense_shares.length > 0 && (
