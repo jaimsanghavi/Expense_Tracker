@@ -268,7 +268,7 @@ create or replace function public.create_expense_with_shares(
   p_merchant text default null,
   p_note text default null,
   p_paid_by uuid default null,
-  p_shares json default '[]'::json
+  p_shares text default '[]'
 )
 returns uuid
 language plpgsql
@@ -279,14 +279,16 @@ declare
   v_expense_id uuid;
   v_share json;
   v_is_split boolean;
+  v_shares json;
 begin
-  v_is_split := json_array_length(p_shares) > 0;
+  v_shares := p_shares::json;
+  v_is_split := json_array_length(v_shares) > 0;
 
   insert into public.expenses (user_id, amount_paise, spent_at, category_id, payment_method_id, merchant, note, is_split, paid_by)
   values (v_user_id, p_amount_paise, p_spent_at, p_category_id, p_payment_method_id, p_merchant, p_note, v_is_split, p_paid_by)
   returning id into v_expense_id;
 
-  for v_share in select * from json_array_elements(p_shares)
+  for v_share in select * from json_array_elements(v_shares)
   loop
     insert into public.expense_shares (expense_id, user_id, friend_id, share_paise)
     values (
