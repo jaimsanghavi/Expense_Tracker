@@ -31,8 +31,14 @@ begin
   insert into public.payment_methods (user_id, name, type) values
     (new.id, 'Cash', 'cash'),
     (new.id, 'UPI', 'upi'),
-    (new.id, 'Credit Card', 'credit_card'),
-    (new.id, 'Debit Card', 'debit_card');
+    (new.id, 'Credit Card - ICICI', 'credit_card'),
+    (new.id, 'Credit Card - HDFC', 'credit_card'),
+    (new.id, 'Credit Card - TATA NEU', 'credit_card'),
+    (new.id, 'Credit Card - Kotak', 'credit_card'),
+    (new.id, 'UPI - Rupay', 'upi'),
+    (new.id, 'Debit Card - Kotak', 'debit_card'),
+    (new.id, 'Debit Card - HDFC', 'debit_card'),
+    (new.id, 'Debit Card - ICICI', 'debit_card');
 
   return new;
 end;

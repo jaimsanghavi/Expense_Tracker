@@ -1,10 +1,7 @@
-const CACHE_NAME = "expense-tracker-v1";
+const CACHE_NAME = "expense-tracker-v2";
 
-// App shell files to cache for offline
+// Only cache static assets during install — NOT auth-protected routes
 const APP_SHELL = [
-  "/",
-  "/dashboard",
-  "/expenses",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
