@@ -10,6 +10,30 @@ function getServiceClient() {
   );
 }
 
+function computeNextRun(currentNextRun: string, cadence: string): string {
+  const d = new Date(currentNextRun);
+  switch (cadence) {
+    case "daily":
+      d.setDate(d.getDate() + 1);
+      break;
+    case "weekly":
+      d.setDate(d.getDate() + 7);
+      break;
+    case "biweekly":
+      d.setDate(d.getDate() + 14);
+      break;
+    case "monthly":
+      d.setMonth(d.getMonth() + 1);
+      break;
+    case "yearly":
+      d.setFullYear(d.getFullYear() + 1);
+      break;
+    default:
+      d.setMonth(d.getMonth() + 1);
+  }
+  return d.toISOString();
+}
+
 export async function GET(request: Request) {
   // Simple auth check for cron — require a secret header
   const authHeader = request.headers.get("authorization");
@@ -43,17 +67,28 @@ export async function GET(request: Request) {
 
   let sent = 0;
   for (const expense of recurring) {
+    // Advance next_run_at regardless of whether we send a notification
+    const nextRun = computeNextRun(expense.next_run_at, expense.cadence);
+    await supabase
+      .from("recurring_expenses")
+      .update({ next_run_at: nextRun })
+      .eq("id", expense.id);
+
     if (!notifyUserIds.has(expense.user_id)) continue;
 
     const amount = formatINR(expense.amount_paise);
     const label = expense.note || "Recurring expense";
 
-    await sendPushToUser(expense.user_id, {
-      title: "Recurring Expense Due",
-      body: `${label} — ${amount}`,
-      tag: `recurring-${expense.id}`,
-      url: "/settings/recurring",
-    });
+    await sendPushToUser(
+      expense.user_id,
+      {
+        title: "Recurring Expense Due",
+        body: `${label} — ${amount}`,
+        tag: `recurring-${expense.id}`,
+        url: "/settings/recurring",
+      },
+      supabase
+    );
     sent++;
   }
 

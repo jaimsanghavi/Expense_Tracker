@@ -23,7 +23,7 @@ interface RecentExpense {
 
 interface FriendBalance {
   friend_id: string;
-  friend_name: string;
+  name: string;
   net_owed_to_me_paise: number;
 }
 
@@ -43,7 +43,7 @@ export default async function DashboardPage({
 
   const [dashboardRes, expensesRes, friendsRes, profileRes] = await Promise.all([
     supabase.rpc("get_month_dashboard", {
-      p_month_start: monthStart.toISOString(),
+      p_month_start: monthStart.toISOString().slice(0, 10),
     }),
     supabase
       .from("expenses")
@@ -52,7 +52,8 @@ export default async function DashboardPage({
       .limit(5),
     supabase
       .from("friend_balances")
-      .select("friend_id, friend_name, net_owed_to_me_paise")
+      .select("friend_id, name, net_owed_to_me_paise")
+      .eq("user_id", user!.id)
       .order("net_owed_to_me_paise", { ascending: false })
       .limit(3),
     supabase

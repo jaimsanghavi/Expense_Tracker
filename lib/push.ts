@@ -1,4 +1,5 @@
 import type WebPush from "web-push";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 let webpush: typeof WebPush | null = null;
@@ -35,10 +36,15 @@ export interface PushPayload {
 
 /**
  * Send a push notification to all of a user's subscribed devices.
+ * Accepts an optional Supabase client (e.g. service-role for cron contexts).
  */
-export async function sendPushToUser(userId: string, payload: PushPayload) {
+export async function sendPushToUser(
+  userId: string,
+  payload: PushPayload,
+  supabaseClient?: SupabaseClient
+) {
   const wp = await getWebPush();
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? (await createClient());
 
   const { data: subscriptions } = await supabase
     .from("push_subscriptions")

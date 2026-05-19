@@ -50,7 +50,7 @@ interface RecentExpense {
 
 interface FriendBalance {
   friend_id: string;
-  friend_name: string;
+  name: string;
   net_owed_to_me_paise: number;
 }
 
@@ -444,10 +444,10 @@ export function DashboardView({
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                        {friend.friend_name.charAt(0).toUpperCase()}
+                        {friend.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm font-medium group-hover:text-primary transition-colors">
-                        {friend.friend_name}
+                        {friend.name}
                       </span>
                     </div>
                     <div className="text-right">

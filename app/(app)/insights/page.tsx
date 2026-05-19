@@ -51,6 +51,13 @@ export default async function InsightsPage({
   const yearEnd = `${year}-12-31T23:59:59.999Z`;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    const { redirect } = await import("next/navigation");
+    redirect("/login");
+  }
 
   const { data: expenses } = await supabase
     .from("expenses")
@@ -59,6 +66,7 @@ export default async function InsightsPage({
     )
     .gte("spent_at", yearStart)
     .lte("spent_at", yearEnd)
+    .is("paid_by", null)
     .order("spent_at", { ascending: true });
 
   const rows = (expenses ?? []).map((e) => ({

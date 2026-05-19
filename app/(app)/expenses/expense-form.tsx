@@ -498,7 +498,14 @@ export function ExpenseForm({
             {/* Who paid */}
             <div className="space-y-2">
               <Label>Who paid?</Label>
-              <Select value={paidBy} onValueChange={(v) => setPaidBy(v ?? "")}>
+              <Select
+                value={paidBy}
+                onValueChange={(v) => setPaidBy(v ?? "")}
+                items={[
+                  { value: "", label: "I paid" },
+                  ...friends.map((f) => ({ value: f.id, label: f.name })),
+                ]}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="I paid" />
                 </SelectTrigger>
