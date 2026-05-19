@@ -1,10 +1,14 @@
-import webpush from "web-push";
+import type WebPush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 
-let vapidConfigured = false;
+let webpush: typeof WebPush | null = null;
 
-function ensureVapidConfigured() {
-  if (vapidConfigured) return;
+async function getWebPush() {
+  if (webpush) return webpush;
+
+  const mod = await import("web-push");
+  webpush = mod.default;
+
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -18,7 +22,8 @@ function ensureVapidConfigured() {
     publicKey,
     privateKey
   );
-  vapidConfigured = true;
+
+  return webpush;
 }
 
 export interface PushPayload {
@@ -32,7 +37,7 @@ export interface PushPayload {
  * Send a push notification to all of a user's subscribed devices.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
-  ensureVapidConfigured();
+  const wp = await getWebPush();
   const supabase = await createClient();
 
   const { data: subscriptions } = await supabase
@@ -44,7 +49,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 
   const results = await Promise.allSettled(
     subscriptions.map((sub) =>
-      webpush
+      wp
         .sendNotification(
           {
             endpoint: sub.endpoint,
