@@ -3,11 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
 
-// Use service role key for cron access (no user auth context)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(request: Request) {
   // Simple auth check for cron — require a secret header
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = getServiceClient();
   const now = new Date().toISOString();
 
   // Find recurring expenses where next_run_at is today or earlier

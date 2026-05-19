@@ -1,16 +1,25 @@
 import webpush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 
-// Configure web-push with VAPID details
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+let vapidConfigured = false;
 
-webpush.setVapidDetails(
-  `mailto:admin@${new URL(SITE_URL).hostname}`,
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+function ensureVapidConfigured() {
+  if (vapidConfigured) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  if (!publicKey || !privateKey) {
+    throw new Error("VAPID keys not configured");
+  }
+
+  webpush.setVapidDetails(
+    `mailto:admin@${new URL(siteUrl).hostname}`,
+    publicKey,
+    privateKey
+  );
+  vapidConfigured = true;
+}
 
 export interface PushPayload {
   title: string;
@@ -23,6 +32,7 @@ export interface PushPayload {
  * Send a push notification to all of a user's subscribed devices.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
+  ensureVapidConfigured();
   const supabase = await createClient();
 
   const { data: subscriptions } = await supabase
