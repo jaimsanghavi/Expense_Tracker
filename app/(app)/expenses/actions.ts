@@ -105,14 +105,12 @@ export async function createExpense(formData: FormData) {
 
   if (isSplit && parsed.data.shares && parsed.data.shares.length > 0) {
     const { data: expenseId, error } = await supabase.rpc("create_expense_with_shares", {
-      p_user_id: user.id,
       p_amount_paise: parsed.data.amount_paise,
       p_spent_at: parsed.data.spent_at,
       p_category_id: parsed.data.category_id,
       p_payment_method_id: parsed.data.payment_method_id,
       p_merchant: parsed.data.merchant,
       p_note: parsed.data.note,
-      p_is_split: true,
       p_paid_by: parsed.data.paid_by,
       p_shares: JSON.stringify(parsed.data.shares),
     });
