@@ -269,7 +269,30 @@ export async function createSettlement(formData: FormData) {
 
   if (insertErr) return { error: insertErr.message };
 
+  // FIFO: mark oldest pending expense_shares as 'paid'
+  let remaining = parsed.data.amount_paise;
+
+  const { data: pendingShares } = await supabase
+    .from("expense_shares")
+    .select("id, share_paise")
+    .eq("user_id", user.id)
+    .eq("friend_id", parsed.data.friend_id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  for (const share of pendingShares ?? []) {
+    if (remaining <= 0) break;
+    if (share.share_paise <= remaining) {
+      await supabase
+        .from("expense_shares")
+        .update({ status: "paid", settled_at: new Date().toISOString() })
+        .eq("id", share.id);
+      remaining -= share.share_paise;
+    }
+  }
+
   revalidatePath(`/friends/${parsed.data.friend_id}`);
   revalidatePath("/friends");
+  revalidatePath("/dashboard");
   return { success: true };
 }

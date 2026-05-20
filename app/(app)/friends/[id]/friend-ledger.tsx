@@ -51,7 +51,8 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
   const [isPending, startTransition] = useTransition();
   const [settleOpen, setSettleOpen] = useState(false);
 
-  // Compute net balance from ledger — mirrors friend_balances view
+  // Compute net balance from ledger
+  // Only count pending shares — FIFO marks settled shares as 'paid'
   // Positive = friend owes us, negative = we owe friend
   const netBalance = ledger.reduce((acc, entry) => {
     if (entry.type === "expense" && entry.status === "pending") {
@@ -61,14 +62,6 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
       }
       // Friend paid → we owe them
       return acc - entry.share_paise;
-    }
-    if (entry.type === "settlement") {
-      if (entry.direction === "from_friend") {
-        // They paid us → reduces what they owe
-        return acc - entry.amount_paise;
-      }
-      // We paid them → reduces what we owe (net goes up)
-      return acc + entry.amount_paise;
     }
     return acc;
   }, 0);

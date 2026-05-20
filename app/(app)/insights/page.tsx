@@ -62,19 +62,24 @@ export default async function InsightsPage({
   const { data: expenses } = await supabase
     .from("expenses")
     .select(
-      "amount_paise, spent_at, category:categories(name, color, icon), payment_method:payment_methods(name, type)"
+      "amount_paise, spent_at, is_split, category:categories(name, color, icon), payment_method:payment_methods(name, type), expense_shares(share_paise)"
     )
     .gte("spent_at", yearStart)
     .lte("spent_at", yearEnd)
     .is("paid_by", null)
     .order("spent_at", { ascending: true });
 
-  const rows = (expenses ?? []).map((e) => ({
-    amount_paise: e.amount_paise,
-    spent_at: e.spent_at,
-    category: e.category as unknown as { name: string; color: string; icon: string } | null,
-    payment_method: e.payment_method as unknown as { name: string; type: string } | null,
-  }));
+  const rows = (expenses ?? []).map((e) => {
+    const friendSharesTotal = (e.expense_shares as { share_paise: number }[] | null)?.reduce(
+      (s: number, sh: { share_paise: number }) => s + sh.share_paise, 0
+    ) ?? 0;
+    return {
+      amount_paise: e.amount_paise - friendSharesTotal,
+      spent_at: e.spent_at,
+      category: e.category as unknown as { name: string; color: string; icon: string } | null,
+      payment_method: e.payment_method as unknown as { name: string; type: string } | null,
+    };
+  });
 
   // Monthly totals (0-11)
   const monthBuckets = Array.from({ length: 12 }, () => 0);
