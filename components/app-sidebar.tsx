@@ -86,6 +86,9 @@ export function AppSidebar() {
           <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
+        <p className="mt-2 px-3 text-[10px] text-muted-foreground/50 tabular-nums">
+          v{process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}
+        </p>
       </div>
     </>
   );
