@@ -45,7 +45,10 @@ interface RecentExpense {
   note: string | null;
   merchant: string | null;
   spent_at: string;
+  is_split: boolean;
+  paid_by: string | null;
   category: { name: string; color: string; icon: string } | null;
+  expense_shares: { share_paise: number }[];
 }
 
 interface FriendBalance {
@@ -86,6 +89,15 @@ export function DashboardView({
       router.push(`${pathname}?month=${value}`);
     }
   };
+
+  function userSharePaise(expense: RecentExpense): number {
+    if (!expense.is_split || !expense.expense_shares?.length) return expense.amount_paise;
+    if (!expense.paid_by) {
+      const friendsTotal = expense.expense_shares.reduce((s, sh) => s + sh.share_paise, 0);
+      return expense.amount_paise - friendsTotal;
+    }
+    return expense.amount_paise;
+  }
 
   const topCategory = dashboard.by_category.length > 0
     ? dashboard.by_category.reduce((a, b) => (a.total_paise > b.total_paise ? a : b))
@@ -406,7 +418,7 @@ export function DashboardView({
                       </div>
                     </div>
                     <span className="text-sm font-semibold tabular-nums shrink-0 ml-2">
-                      {formatINR(expense.amount_paise)}
+                      {formatINR(userSharePaise(expense))}
                     </span>
                   </Link>
                 ))}

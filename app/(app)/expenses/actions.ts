@@ -28,7 +28,8 @@ export async function getExpenses(filters?: {
       `
       *,
       categories(id, name, color, icon),
-      payment_methods(id, name, type)
+      payment_methods(id, name, type),
+      expense_shares(share_paise)
     `
     )
     .eq("user_id", user.id)

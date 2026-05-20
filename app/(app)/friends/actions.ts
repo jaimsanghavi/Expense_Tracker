@@ -150,6 +150,7 @@ export type LedgerEntry =
       merchant: string | null;
       share_paise: number;
       status: string;
+      paid_by: string | null;
     }
   | {
       type: "settlement";
@@ -177,7 +178,7 @@ export async function getFriendLedger(friendId: string) {
       id,
       share_paise,
       status,
-      expenses(id, spent_at, note, merchant)
+      expenses(id, spent_at, note, merchant, paid_by)
     `
     )
     .eq("user_id", user.id)
@@ -202,6 +203,7 @@ export async function getFriendLedger(friendId: string) {
       spent_at: string;
       note: string | null;
       merchant: string | null;
+      paid_by: string | null;
     };
     if (!expense) continue;
     ledger.push({
@@ -212,6 +214,7 @@ export async function getFriendLedger(friendId: string) {
       merchant: expense.merchant,
       share_paise: share.share_paise,
       status: share.status,
+      paid_by: expense.paid_by,
     });
   }
 
@@ -265,31 +268,6 @@ export async function createSettlement(formData: FormData) {
   });
 
   if (insertErr) return { error: insertErr.message };
-
-  // FIFO: mark oldest pending expense_shares as 'paid'
-  let remaining = parsed.data.amount_paise;
-
-  const { data: pendingShares } = await supabase
-    .from("expense_shares")
-    .select("id, share_paise")
-    .eq("user_id", user.id)
-    .eq("friend_id", parsed.data.friend_id)
-    .eq("status", "pending")
-    .order("created_at", { ascending: true });
-
-  for (const share of pendingShares ?? []) {
-    if (remaining <= 0) break;
-    if (share.share_paise <= remaining) {
-      await supabase
-        .from("expense_shares")
-        .update({ status: "paid", settled_at: new Date().toISOString() })
-        .eq("id", share.id);
-      remaining -= share.share_paise;
-    } else {
-      // Partial — don't mark as paid if settlement doesn't fully cover
-      break;
-    }
-  }
 
   revalidatePath(`/friends/${parsed.data.friend_id}`);
   revalidatePath("/friends");

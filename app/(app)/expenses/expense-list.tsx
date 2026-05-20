@@ -27,8 +27,10 @@ type Expense = {
   merchant: string | null;
   note: string | null;
   is_split: boolean;
+  paid_by: string | null;
   categories: { id: string; name: string; color: string | null; icon: string | null } | null;
   payment_methods: { id: string; name: string; type: string } | null;
+  expense_shares: { share_paise: number }[];
 };
 
 type Category = {
@@ -110,6 +112,18 @@ export function ExpenseList({
       setOffset((prev) => prev + more.length);
       setHasMore(more.length === 50);
     });
+  }
+
+  /** Compute the user's own share for display */
+  function userSharePaise(expense: Expense): number {
+    if (!expense.is_split || !expense.expense_shares?.length) return expense.amount_paise;
+    // User paid: their share = total - friends' shares
+    if (!expense.paid_by) {
+      const friendsTotal = expense.expense_shares.reduce((s, sh) => s + sh.share_paise, 0);
+      return expense.amount_paise - friendsTotal;
+    }
+    // Friend paid: the full amount is what the user owes
+    return expense.amount_paise;
   }
 
   // Group expenses by date
@@ -238,7 +252,7 @@ export function ExpenseList({
                 </h3>
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {formatINR(items.reduce((sum, e) => sum + e.amount_paise, 0))}
+                  {formatINR(items.reduce((sum, e) => sum + userSharePaise(e), 0))}
                 </span>
               </div>
               <div className="space-y-1.5">
@@ -278,9 +292,16 @@ export function ExpenseList({
                       </Badge>
                     )}
                     {/* Amount */}
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">
-                      {formatINR(expense.amount_paise)}
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <span className="text-sm font-semibold tabular-nums">
+                        {formatINR(userSharePaise(expense))}
+                      </span>
+                      {expense.is_split && userSharePaise(expense) !== expense.amount_paise && (
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
+                          of {formatINR(expense.amount_paise)}
+                        </p>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>

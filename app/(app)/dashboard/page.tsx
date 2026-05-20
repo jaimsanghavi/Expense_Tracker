@@ -18,7 +18,10 @@ interface RecentExpense {
   note: string | null;
   merchant: string | null;
   spent_at: string;
+  is_split: boolean;
+  paid_by: string | null;
   category: { name: string; color: string; icon: string } | null;
+  expense_shares: { share_paise: number }[];
 }
 
 interface FriendBalance {
@@ -47,7 +50,7 @@ export default async function DashboardPage({
     }),
     supabase
       .from("expenses")
-      .select("id, amount_paise, note, merchant, spent_at, category:categories(name, color, icon)")
+      .select("id, amount_paise, note, merchant, spent_at, is_split, paid_by, category:categories(name, color, icon), expense_shares(share_paise)")
       .order("spent_at", { ascending: false })
       .limit(5),
     supabase

@@ -300,12 +300,30 @@ export function ExpenseDetail({
           <CardContent className="pt-6 space-y-4">
             {/* Amount */}
             <div className="text-center">
-              <p className="text-3xl font-bold font-mono">
-                {formatINR(expense.amount_paise)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatDateTimeIST(expense.spent_at)}
-              </p>
+              {expense.is_split && expense.expense_shares.length > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground">Your share</p>
+                  <p className="text-3xl font-bold font-mono">
+                    {formatINR(
+                      !expense.paid_by
+                        ? expense.amount_paise - expense.expense_shares.reduce((s, sh) => s + sh.share_paise, 0)
+                        : expense.amount_paise
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    of {formatINR(expense.amount_paise)} total · {formatDateTimeIST(expense.spent_at)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold font-mono">
+                    {formatINR(expense.amount_paise)}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatDateTimeIST(expense.spent_at)}
+                  </p>
+                </>
+              )}
             </div>
 
             <Separator />

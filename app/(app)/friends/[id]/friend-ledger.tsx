@@ -51,18 +51,23 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
   const [isPending, startTransition] = useTransition();
   const [settleOpen, setSettleOpen] = useState(false);
 
-  // Compute net balance from ledger
+  // Compute net balance from ledger — mirrors friend_balances view
+  // Positive = friend owes us, negative = we owe friend
   const netBalance = ledger.reduce((acc, entry) => {
-    if (entry.type === "expense") {
-      // They owe us this share
-      return acc + entry.share_paise;
+    if (entry.type === "expense" && entry.status === "pending") {
+      if (!entry.paid_by) {
+        // We paid → friend owes us this share
+        return acc + entry.share_paise;
+      }
+      // Friend paid → we owe them
+      return acc - entry.share_paise;
     }
     if (entry.type === "settlement") {
       if (entry.direction === "from_friend") {
-        // They paid us
+        // They paid us → reduces what they owe
         return acc - entry.amount_paise;
       }
-      // We paid them
+      // We paid them → reduces what we owe (net goes up)
       return acc + entry.amount_paise;
     }
     return acc;
@@ -136,7 +141,7 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="direction">Direction *</Label>
-                <Select name="direction" required>
+                <Select name="direction" required items={[{value:"from_friend",label:"They paid me"},{value:"to_friend",label:"I paid them"}]}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select direction" />
                   </SelectTrigger>
@@ -148,7 +153,7 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="method">Payment Method</Label>
-                <Select name="method">
+                <Select name="method" items={[{value:"upi",label:"UPI"},{value:"cash",label:"Cash"},{value:"net_banking",label:"Net Banking"},{value:"wallet",label:"Wallet"},{value:"other",label:"Other"}]}>
                   <SelectTrigger>
                     <SelectValue placeholder="Optional" />
                   </SelectTrigger>

@@ -40,7 +40,7 @@ export function AppSidebar() {
     <>
       {/* Logo */}
       <div className="mb-8 px-2">
-        <div className="flex items-center gap-2.5">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
             <Wallet className="h-5 w-5 text-primary" />
           </div>
@@ -48,7 +48,7 @@ export function AppSidebar() {
             <h1 className="text-sm font-semibold tracking-tight">Expense Tracker</h1>
             <p className="text-[10px] text-muted-foreground">Personal Finance</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -94,10 +94,6 @@ export function AppSidebar() {
     <>
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b bg-background/80 backdrop-blur-md px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
-          <span className="text-sm font-semibold">Expense Tracker</span>
-        </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -105,6 +101,12 @@ export function AppSidebar() {
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-primary" />
+          <span className="text-sm font-semibold">Expense Tracker</span>
+        </Link>
+        {/* Spacer to center logo */}
+        <div className="w-9" />
       </div>
 
       {/* Mobile overlay */}
