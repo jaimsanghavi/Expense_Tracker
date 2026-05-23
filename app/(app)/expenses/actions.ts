@@ -6,7 +6,7 @@ import { expenseSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
-import { monthStartUTC, monthEndUTC } from "@/lib/dates";
+import { monthStartUTC, monthEndUTC, istLocalToUTC } from "@/lib/dates";
 
 export async function getExpenses(filters?: {
   month?: string;
@@ -92,7 +92,7 @@ export async function createExpense(formData: FormData) {
 
   const parsed = expenseSchema.safeParse({
     amount_paise: amountPaise,
-    spent_at: new Date(spentAt).toISOString(),
+    spent_at: istLocalToUTC(spentAt),
     category_id: categoryId,
     payment_method_id: paymentMethodId,
     merchant,
@@ -206,7 +206,7 @@ export async function updateExpense(id: string, formData: FormData) {
 
   const parsed = expenseSchema.safeParse({
     amount_paise: amountPaise,
-    spent_at: new Date(spentAt).toISOString(),
+    spent_at: istLocalToUTC(spentAt),
     category_id: categoryId,
     payment_method_id: paymentMethodId,
     merchant,

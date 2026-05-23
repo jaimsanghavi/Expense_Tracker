@@ -76,3 +76,14 @@ export function yearBoundsUTC(year: number): { start: string; end: string } {
   const end = fromZonedTime(new Date(year, 11, 31, 23, 59, 59, 999), IST);
   return { start: start.toISOString(), end: end.toISOString() };
 }
+
+/** Convert a datetime-local string (IST) like "2026-05-23T14:30" to a UTC ISO string. */
+export function istLocalToUTC(localStr: string): string {
+  return fromZonedTime(new Date(localStr), IST).toISOString();
+}
+
+/** Convert a UTC ISO string to IST datetime-local format "YYYY-MM-DDTHH:mm". */
+export function utcToISTLocal(utcStr: string): string {
+  const ist = toZonedTime(new Date(utcStr), IST);
+  return format(ist, "yyyy-MM-dd'T'HH:mm");
+}

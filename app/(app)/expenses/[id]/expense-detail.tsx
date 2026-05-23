@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatINR, toRupees } from "@/lib/money";
-import { formatDateTimeIST } from "@/lib/dates";
+import { formatDateTimeIST, utcToISTLocal } from "@/lib/dates";
 import { updateExpense, deleteExpense } from "../actions";
 import { updateShareStatus } from "./actions";
 import { ReceiptUpload } from "../receipt-upload";
@@ -78,12 +78,7 @@ export function ExpenseDetail({
 
   // Edit form state
   const [amount, setAmount] = useState(toRupees(expense.amount_paise).toString());
-  const [spentAt, setSpentAt] = useState(() => {
-    const d = new Date(expense.spent_at);
-    const offset = d.getTimezoneOffset();
-    const local = new Date(d.getTime() - offset * 60000);
-    return local.toISOString().slice(0, 16);
-  });
+  const [spentAt, setSpentAt] = useState(() => utcToISTLocal(expense.spent_at));
   const [categoryId, setCategoryId] = useState(
     expense.categories?.id ?? ""
   );
