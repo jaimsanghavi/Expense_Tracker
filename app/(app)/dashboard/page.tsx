@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { monthStartUTC } from "@/lib/dates";
+import { monthStartUTC, currentMonthIST } from "@/lib/dates";
 import { DashboardView } from "./dashboard-view";
 
 interface DashboardData {
@@ -80,7 +80,7 @@ export default async function DashboardPage({
   const friendBalances: FriendBalance[] = (friendsRes.data as FriendBalance[] | null) ?? [];
 
   // Use the original param for display (not UTC-converted monthStart which can shift months)
-  const monthValue = monthParam ?? new Date().toISOString().slice(0, 7);
+  const monthValue = monthParam ?? currentMonthIST();
 
   return (
     <DashboardView

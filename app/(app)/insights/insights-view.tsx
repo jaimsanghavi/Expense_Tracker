@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatINR, toRupees } from "@/lib/money";
+import { nowIST } from "@/lib/dates";
 import { CategoryIcon } from "@/components/category-icon";
 import type { InsightsData } from "./page";
 
@@ -71,7 +72,7 @@ interface InsightsViewProps {
 
 export function InsightsView({ data }: InsightsViewProps) {
   const router = useRouter();
-  const currentYear = new Date().getFullYear();
+  const currentYear = nowIST().getFullYear();
   const years = Array.from({ length: currentYear - 2024 + 1 }, (_, i) => 2024 + i);
 
   const handleYearChange = (value: string) => {

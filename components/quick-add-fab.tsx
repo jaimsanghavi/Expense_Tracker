@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CategoryIcon } from "@/components/category-icon";
 import { createExpense } from "@/app/(app)/expenses/actions";
+import { nowISTLocalString } from "@/lib/dates";
 
 type Category = {
   id: string;
@@ -60,11 +61,8 @@ export function QuickAddFab({ categories }: QuickAddProps) {
     startTransition(async () => {
       const formData = new FormData();
       formData.set("amount", amount);
-      // Use current datetime
-      const now = new Date();
-      const offset = now.getTimezoneOffset();
-      const local = new Date(now.getTime() - offset * 60000);
-      formData.set("spent_at", local.toISOString().slice(0, 16));
+      // Use current IST datetime
+      formData.set("spent_at", nowISTLocalString());
       formData.set("category_id", categoryId);
       formData.set("payment_method_id", "");
       formData.set("merchant", "");

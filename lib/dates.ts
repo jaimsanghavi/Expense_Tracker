@@ -42,3 +42,37 @@ export function monthLabel(date: Date | string): string {
   const ist = toZonedTime(d, IST);
   return format(ist, "MMMM yyyy");
 }
+
+/** Current month in IST as "YYYY-MM". */
+export function currentMonthIST(): string {
+  const ist = nowIST();
+  return format(ist, "yyyy-MM");
+}
+
+/** Current year in IST. */
+export function currentYearIST(): number {
+  return nowIST().getFullYear();
+}
+
+/** Today's date in IST as "YYYY-MM-DD". */
+export function todayIST(): string {
+  return format(nowIST(), "yyyy-MM-dd");
+}
+
+/** Current date+time in IST as "YYYY-MM-DDTHH:mm" (for datetime-local inputs). */
+export function nowISTLocalString(): string {
+  return format(nowIST(), "yyyy-MM-dd'T'HH:mm");
+}
+
+/** Get the month index (0-11) of a UTC timestamp in IST. */
+export function getMonthIST(date: Date | string): number {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return toZonedTime(d, IST).getMonth();
+}
+
+/** Year boundaries in IST, returned as UTC ISO strings. */
+export function yearBoundsUTC(year: number): { start: string; end: string } {
+  const start = fromZonedTime(new Date(year, 0, 1), IST);
+  const end = fromZonedTime(new Date(year, 11, 31, 23, 59, 59, 999), IST);
+  return { start: start.toISOString(), end: end.toISOString() };
+}

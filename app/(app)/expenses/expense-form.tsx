@@ -30,6 +30,7 @@ import { DateTimePicker } from "@/components/datetime-picker";
 import { createExpense, updateExpenseReceipt } from "./actions";
 import { toPaise, formatINR } from "@/lib/money";
 import { splitEqual, splitByPercentage, validateShares } from "@/lib/splits";
+import { nowISTLocalString } from "@/lib/dates";
 
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
@@ -60,13 +61,7 @@ export function ExpenseForm({
   const [isPending, startTransition] = useTransition();
 
   const [amount, setAmount] = useState("");
-  const [spentAt, setSpentAt] = useState(() => {
-    const now = new Date();
-    // Format for datetime-local input
-    const offset = now.getTimezoneOffset();
-    const local = new Date(now.getTime() - offset * 60000);
-    return local.toISOString().slice(0, 16);
-  });
+  const [spentAt, setSpentAt] = useState(() => nowISTLocalString());
   const [categoryId, setCategoryId] = useState("");
   const [paymentMethodId, setPaymentMethodId] = useState("");
   const [merchant, setMerchant] = useState("");

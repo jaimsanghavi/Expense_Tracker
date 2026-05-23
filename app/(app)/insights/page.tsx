@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { currentYearIST, yearBoundsUTC, getMonthIST } from "@/lib/dates";
 import { InsightsView } from "./insights-view";
 
 interface CategoryTotal {
@@ -44,11 +45,12 @@ export default async function InsightsPage({
   searchParams: Promise<{ year?: string }>;
 }) {
   const params = await searchParams;
-  const currentYear = new Date().getFullYear();
+  const currentYear = currentYearIST();
   const year = params.year ? parseInt(params.year, 10) : currentYear;
 
-  const yearStart = `${year}-01-01T00:00:00.000Z`;
-  const yearEnd = `${year}-12-31T23:59:59.999Z`;
+  const bounds = yearBoundsUTC(year);
+  const yearStart = bounds.start;
+  const yearEnd = bounds.end;
 
   const supabase = await createClient();
   const {
@@ -87,7 +89,7 @@ export default async function InsightsPage({
   const pmMap = new Map<string, PaymentMethodTotal>();
 
   for (const row of rows) {
-    const monthIdx = new Date(row.spent_at).getMonth();
+    const monthIdx = getMonthIST(row.spent_at);
     monthBuckets[monthIdx] += row.amount_paise;
 
     if (row.category) {

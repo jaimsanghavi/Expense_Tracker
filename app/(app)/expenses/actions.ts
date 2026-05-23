@@ -6,6 +6,7 @@ import { expenseSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
+import { monthStartUTC, monthEndUTC } from "@/lib/dates";
 
 export async function getExpenses(filters?: {
   month?: string;
@@ -38,8 +39,9 @@ export async function getExpenses(filters?: {
   if (filters?.month) {
     // month is in format "YYYY-MM"
     const [year, month] = filters.month.split("-").map(Number);
-    const start = new Date(year, month - 1, 1).toISOString();
-    const end = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+    const monthDate = new Date(year, month - 1, 1);
+    const start = monthStartUTC(monthDate).toISOString();
+    const end = monthEndUTC(monthDate).toISOString();
     query = query.gte("spent_at", start).lte("spent_at", end);
   }
 

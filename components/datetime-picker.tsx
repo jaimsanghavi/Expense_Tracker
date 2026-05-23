@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { todayIST, nowIST } from "@/lib/dates";
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
@@ -96,7 +97,7 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
   }
 
   function handleTimeChange(newTime: string) {
-    onChange(`${datePart || new Date().toISOString().slice(0, 10)}T${newTime}`);
+    onChange(`${datePart || todayIST()}T${newTime}`);
   }
 
   function prevMonth() {
@@ -117,7 +118,7 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIST();
 
   const displayText = datePart
     ? `${new Date(datePart + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} at ${timePart}`
@@ -205,8 +206,8 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
               size="sm"
               className="text-xs"
               onClick={() => {
-                const now = new Date();
-                const nowDate = now.toISOString().slice(0, 10);
+                const now = nowIST();
+                const nowDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
                 const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
                 onChange(`${nowDate}T${nowTime}`);
                 setViewYear(now.getFullYear());

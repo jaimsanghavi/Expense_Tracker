@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { nowIST } from "@/lib/dates";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -21,7 +22,7 @@ export function MonthPicker({ value, onChange, className }: MonthPickerProps) {
 
   const [year, month] = value
     ? [parseInt(value.slice(0, 4)), parseInt(value.slice(5, 7))]
-    : [new Date().getFullYear(), new Date().getMonth() + 1];
+    : [nowIST().getFullYear(), nowIST().getMonth() + 1];
 
   const [viewYear, setViewYear] = useState(year);
 
@@ -94,8 +95,8 @@ export function MonthPicker({ value, onChange, className }: MonthPickerProps) {
               const m = i + 1;
               const isSelected = viewYear === year && m === month;
               const isCurrent =
-                viewYear === new Date().getFullYear() &&
-                m === new Date().getMonth() + 1;
+                viewYear === nowIST().getFullYear() &&
+                m === nowIST().getMonth() + 1;
 
               return (
                 <button
