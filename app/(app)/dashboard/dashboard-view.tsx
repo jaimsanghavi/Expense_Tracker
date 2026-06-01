@@ -2,14 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
 import {
   IndianRupee,
   ArrowUpRight,
@@ -28,6 +21,15 @@ import { formatINR, toRupees } from "@/lib/money";
 import { formatDateIST } from "@/lib/dates";
 import { CategoryIcon } from "@/components/category-icon";
 import { MonthPicker } from "@/components/month-picker";
+
+// Charts pull in the heavy recharts library — load it lazily so it doesn't ship
+// in the dashboard's initial bundle; the cards/numbers paint first.
+const SpendChart = dynamic(() => import("./spend-chart"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[260px] w-full animate-pulse rounded-lg bg-muted/50" />
+  ),
+});
 
 interface DashboardData {
   total_spent_paise: number;
@@ -254,39 +256,7 @@ export function DashboardView({
         </CardHeader>
         <CardContent>
           {chartData.length > 0 && dashboard.total_spent_paise > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 11, fill: "oklch(0.65 0.03 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "oklch(0.65 0.03 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v: number) => `₹${v}`}
-                  width={50}
-                />
-                <Tooltip
-                  formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Spent"]}
-                  contentStyle={{
-                    backgroundColor: "oklch(0.20 0.02 260)",
-                    border: "1px solid oklch(0.30 0.02 260)",
-                    borderRadius: "8px",
-                    color: "oklch(0.95 0 0)",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                  }}
-                  cursor={{ fill: "oklch(0.25 0.02 260)", opacity: 0.3 }}
-                />
-                <Bar
-                  dataKey="amount"
-                  radius={[6, 6, 0, 0]}
-                  fill="oklch(0.60 0.18 260)"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <SpendChart data={chartData} />
           ) : (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
               <TrendingUp className="h-8 w-8 mb-2 opacity-40" />

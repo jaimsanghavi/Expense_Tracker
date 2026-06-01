@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { currentYearIST, yearBoundsUTC, getMonthIST } from "@/lib/dates";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { currentYearIST, yearRangeUTC, getMonthIST } from "@/lib/dates";
 import { InsightsView } from "./insights-view";
 
 interface CategoryTotal {
@@ -48,14 +48,10 @@ export default async function InsightsPage({
   const currentYear = currentYearIST();
   const year = params.year ? parseInt(params.year, 10) : currentYear;
 
-  const bounds = yearBoundsUTC(year);
-  const yearStart = bounds.start;
-  const yearEnd = bounds.end;
+  const { start: yearStart, end: yearEnd } = yearRangeUTC(year);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     const { redirect } = await import("next/navigation");
     redirect("/login");
@@ -67,7 +63,7 @@ export default async function InsightsPage({
       "amount_paise, spent_at, is_split, category:categories(name, color, icon), payment_method:payment_methods(name, type), expense_shares(share_paise)"
     )
     .gte("spent_at", yearStart)
-    .lte("spent_at", yearEnd)
+    .lt("spent_at", yearEnd)
     .is("paid_by", null)
     .order("spent_at", { ascending: true });
 

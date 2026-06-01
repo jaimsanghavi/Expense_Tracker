@@ -1,15 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { friendSchema, settlementSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
 
 export async function getFriends() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -40,9 +38,7 @@ export async function getFriends() {
 
 export async function getFriend(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -59,9 +55,7 @@ export async function getFriend(id: string) {
 
 export async function createFriend(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -90,9 +84,7 @@ export async function createFriend(formData: FormData) {
 
 export async function updateFriend(id: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -123,9 +115,7 @@ export async function updateFriend(id: string, formData: FormData) {
 
 export async function deleteFriend(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -164,9 +154,7 @@ export type LedgerEntry =
 
 export async function getFriendLedger(friendId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -240,9 +228,7 @@ export async function getFriendLedger(friendId: string) {
 
 export async function createSettlement(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -269,28 +255,8 @@ export async function createSettlement(formData: FormData) {
 
   if (insertErr) return { error: insertErr.message };
 
-  // FIFO: mark oldest pending expense_shares as 'paid'
-  let remaining = parsed.data.amount_paise;
-
-  const { data: pendingShares } = await supabase
-    .from("expense_shares")
-    .select("id, share_paise")
-    .eq("user_id", user.id)
-    .eq("friend_id", parsed.data.friend_id)
-    .eq("status", "pending")
-    .order("created_at", { ascending: true });
-
-  for (const share of pendingShares ?? []) {
-    if (remaining <= 0) break;
-    if (share.share_paise <= remaining) {
-      await supabase
-        .from("expense_shares")
-        .update({ status: "paid", settled_at: new Date().toISOString() })
-        .eq("id", share.id);
-      remaining -= share.share_paise;
-    }
-  }
-
+  // Model B: the settlement row adjusts the net balance directly (see the
+  // friend_balances view); shares are not flipped, so partial payments work.
   revalidatePath(`/friends/${parsed.data.friend_id}`);
   revalidatePath("/friends");
   revalidatePath("/dashboard");

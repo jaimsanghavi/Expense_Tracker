@@ -1,6 +1,11 @@
 /** Convert rupees (number or string) to paise (integer). */
-export const toPaise = (rupees: number | string): number =>
-  Math.round(Number(rupees) * 100);
+export const toPaise = (rupees: number | string): number => {
+  const n = Number(rupees);
+  if (!Number.isFinite(n)) {
+    throw new Error(`Invalid amount: ${JSON.stringify(rupees)}`);
+  }
+  return Math.round(n * 100);
+};
 
 /** Convert paise to rupees (float). */
 export const toRupees = (paise: number): number => paise / 100;

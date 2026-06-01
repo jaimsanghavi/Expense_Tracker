@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -26,3 +27,17 @@ export async function createClient() {
     }
   );
 }
+
+/**
+ * The authenticated user for the current request, validated once and shared.
+ * `supabase.auth.getUser()` makes a network call to Supabase Auth; wrapping it
+ * in React `cache()` dedupes it so the layout, the page, and every data loader
+ * in the same render share a single round-trip instead of one each.
+ */
+export const getCurrentUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});

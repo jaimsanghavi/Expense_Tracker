@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { expenseSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
-import { monthStartUTC, monthEndUTC, istLocalToUTC } from "@/lib/dates";
+import { monthRangeUTC, istLocalToUTC } from "@/lib/dates";
+import { sanitizeSearchTerm } from "@/lib/search";
 
 export async function getExpenses(filters?: {
   month?: string;
@@ -17,9 +18,7 @@ export async function getExpenses(filters?: {
   offset?: number;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -40,9 +39,8 @@ export async function getExpenses(filters?: {
     // month is in format "YYYY-MM"
     const [year, month] = filters.month.split("-").map(Number);
     const monthDate = new Date(year, month - 1, 1);
-    const start = monthStartUTC(monthDate).toISOString();
-    const end = monthEndUTC(monthDate).toISOString();
-    query = query.gte("spent_at", start).lte("spent_at", end);
+    const { start, end } = monthRangeUTC(monthDate);
+    query = query.gte("spent_at", start).lt("spent_at", end);
   }
 
   if (filters?.categoryId) {
@@ -54,9 +52,10 @@ export async function getExpenses(filters?: {
   }
 
   if (filters?.search) {
-    query = query.or(
-      `note.ilike.%${filters.search}%,merchant.ilike.%${filters.search}%`
-    );
+    const term = sanitizeSearchTerm(filters.search);
+    if (term) {
+      query = query.or(`note.ilike.%${term}%,merchant.ilike.%${term}%`);
+    }
   }
 
   const limit = filters?.limit ?? 50;
@@ -71,9 +70,7 @@ export async function getExpenses(filters?: {
 
 export async function createExpense(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -188,9 +185,7 @@ async function triggerLargeExpenseNotification(
 
 export async function updateExpense(id: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -241,9 +236,7 @@ export async function updateExpense(id: string, formData: FormData) {
 
 export async function deleteExpense(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -264,9 +257,7 @@ export async function updateExpenseReceipt(
   receiptPath: string
 ) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -284,9 +275,7 @@ export async function updateExpenseReceipt(
 
 export async function removeExpenseReceipt(expenseId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -316,9 +305,7 @@ export async function removeExpenseReceipt(expenseId: string) {
 
 export async function getReceiptUrl(receiptPath: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

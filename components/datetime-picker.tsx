@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { todayIST, nowIST } from "@/lib/dates";
+import { todayIST, nowIST, formatISTDateLabel } from "@/lib/dates";
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
@@ -121,7 +121,7 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
   const today = todayIST();
 
   const displayText = datePart
-    ? `${new Date(datePart + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} at ${timePart}`
+    ? `${formatISTDateLabel(datePart)} at ${timePart}`
     : "Select date & time";
 
   return (

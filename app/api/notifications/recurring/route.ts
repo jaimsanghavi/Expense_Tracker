@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
+import { computeNextRunUTC } from "@/lib/recurring";
+import type { Cadence } from "@/lib/schemas";
 
 function getServiceClient() {
   return createClient(
@@ -10,34 +13,18 @@ function getServiceClient() {
   );
 }
 
-function computeNextRun(currentNextRun: string, cadence: string): string {
-  const d = new Date(currentNextRun);
-  switch (cadence) {
-    case "daily":
-      d.setDate(d.getDate() + 1);
-      break;
-    case "weekly":
-      d.setDate(d.getDate() + 7);
-      break;
-    case "biweekly":
-      d.setDate(d.getDate() + 14);
-      break;
-    case "monthly":
-      d.setMonth(d.getMonth() + 1);
-      break;
-    case "yearly":
-      d.setFullYear(d.getFullYear() + 1);
-      break;
-    default:
-      d.setMonth(d.getMonth() + 1);
-  }
-  return d.toISOString();
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
 export async function GET(request: Request) {
-  // Simple auth check for cron — require a secret header
+  // Cron auth — require the configured secret; fail closed if it isn't set so
+  // a missing CRON_SECRET can't be matched by "Bearer undefined".
+  const secret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!secret || !authHeader || !safeEqual(authHeader, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -68,7 +55,10 @@ export async function GET(request: Request) {
   let sent = 0;
   for (const expense of recurring) {
     // Advance next_run_at regardless of whether we send a notification
-    const nextRun = computeNextRun(expense.next_run_at, expense.cadence);
+    const nextRun = computeNextRunUTC(
+      expense.next_run_at,
+      expense.cadence as Cadence
+    );
     await supabase
       .from("recurring_expenses")
       .update({ next_run_at: nextRun })

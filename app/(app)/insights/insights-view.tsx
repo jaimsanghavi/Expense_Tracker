@@ -1,14 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
 import {
   IndianRupee,
   TrendingUp,
@@ -58,13 +51,13 @@ const PM_COLORS: Record<string, string> = {
   other: "#6b7280",
 };
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "oklch(0.20 0.02 260)",
-  border: "1px solid oklch(0.30 0.02 260)",
-  borderRadius: "8px",
-  color: "oklch(0.95 0 0)",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-};
+// Lazy-load the recharts chart so it stays out of the initial insights bundle.
+const MonthlyChart = dynamic(() => import("./monthly-chart"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[300px] w-full animate-pulse rounded-lg bg-muted/50" />
+  ),
+});
 
 interface InsightsViewProps {
   data: InsightsData;
@@ -201,39 +194,7 @@ export function InsightsView({ data }: InsightsViewProps) {
         </CardHeader>
         <CardContent>
           {data.total_paise > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
-              >
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 11, fill: "oklch(0.65 0.03 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "oklch(0.65 0.03 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
-                  width={65}
-                />
-                <Tooltip
-                  formatter={(value) => [
-                    `₹${Number(value).toLocaleString("en-IN")}`,
-                    "Spent",
-                  ]}
-                  contentStyle={TOOLTIP_STYLE}
-                  cursor={{ fill: "oklch(0.25 0.02 260)", opacity: 0.3 }}
-                />
-                <Bar
-                  dataKey="amount"
-                  radius={[6, 6, 0, 0]}
-                  fill="oklch(0.60 0.18 260)"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <MonthlyChart data={chartData} />
           ) : (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
               <TrendingUp className="h-8 w-8 mb-2 opacity-40" />

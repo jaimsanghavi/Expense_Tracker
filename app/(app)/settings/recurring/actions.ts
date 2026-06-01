@@ -1,15 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { recurringExpenseSchema } from "@/lib/schemas";
 import { toPaise } from "@/lib/money";
+import { istLocalToUTC } from "@/lib/dates";
+
+/** Interpret a date-only (or datetime-local) "next run" input as IST → UTC ISO. */
+function nextRunToUTC(value: FormDataEntryValue | null): string {
+  if (!value) return "";
+  const s = value as string;
+  return istLocalToUTC(s.includes("T") ? s : `${s}T00:00`);
+}
 
 export async function getRecurringExpenses() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -25,9 +31,7 @@ export async function getRecurringExpenses() {
 
 export async function createRecurringExpense(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -37,9 +41,7 @@ export async function createRecurringExpense(formData: FormData) {
     category_id: formData.get("category_id") || null,
     payment_method_id: formData.get("payment_method_id") || null,
     cadence: formData.get("cadence"),
-    next_run_at: formData.get("next_run_at")
-      ? new Date(formData.get("next_run_at") as string).toISOString()
-      : "",
+    next_run_at: nextRunToUTC(formData.get("next_run_at")),
     note: formData.get("note") || null,
     is_active: true,
   });
@@ -61,9 +63,7 @@ export async function createRecurringExpense(formData: FormData) {
 
 export async function updateRecurringExpense(id: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -73,9 +73,7 @@ export async function updateRecurringExpense(id: string, formData: FormData) {
     category_id: formData.get("category_id") || null,
     payment_method_id: formData.get("payment_method_id") || null,
     cadence: formData.get("cadence"),
-    next_run_at: formData.get("next_run_at")
-      ? new Date(formData.get("next_run_at") as string).toISOString()
-      : "",
+    next_run_at: nextRunToUTC(formData.get("next_run_at")),
     note: formData.get("note") || null,
     is_active: formData.get("is_active") === "true",
   });
@@ -98,9 +96,7 @@ export async function updateRecurringExpense(id: string, formData: FormData) {
 
 export async function deleteRecurringExpense(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -117,9 +113,7 @@ export async function deleteRecurringExpense(id: string) {
 
 export async function toggleRecurringExpense(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

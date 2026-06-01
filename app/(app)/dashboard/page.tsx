@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { monthStartUTC, currentMonthIST } from "@/lib/dates";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { currentMonthIST } from "@/lib/dates";
 import { DashboardView } from "./dashboard-view";
 
 interface DashboardData {
@@ -38,15 +38,18 @@ export default async function DashboardPage({
   const params = await searchParams;
   const monthParam = params.month;
 
-  const monthDate = monthParam ? new Date(monthParam + "-01") : new Date();
-  const monthStart = monthStartUTC(monthDate);
+  // IST calendar month ("YYYY-MM"); the RPC resolves the IST window from it.
+  const monthValue =
+    monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+      ? monthParam
+      : currentMonthIST();
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const [dashboardRes, expensesRes, friendsRes, profileRes] = await Promise.all([
     supabase.rpc("get_month_dashboard", {
-      p_month_start: monthStart.toISOString().slice(0, 10),
+      p_month_start: `${monthValue}-01`,
     }),
     supabase
       .from("expenses")
@@ -57,8 +60,7 @@ export default async function DashboardPage({
       .from("friend_balances")
       .select("friend_id, name, net_owed_to_me_paise")
       .eq("user_id", user!.id)
-      .order("net_owed_to_me_paise", { ascending: false })
-      .limit(3),
+      .order("net_owed_to_me_paise", { ascending: false }),
     supabase
       .from("profiles")
       .select("monthly_budget_paise")
@@ -66,21 +68,34 @@ export default async function DashboardPage({
       .single(),
   ]);
 
-  const dashboard: DashboardData = dashboardRes.data ?? {
-    total_spent_paise: 0,
-    to_receive_paise: 0,
-    to_pay_paise: 0,
-    total_outstanding_paise: 0,
-    by_category: [],
-    by_payment_method: [],
-    daily_totals: [],
+  const rpc = dashboardRes.data as DashboardData | null;
+  const allBalances: FriendBalance[] =
+    (friendsRes.data as FriendBalance[] | null) ?? [];
+
+  // Model B: receivable/payable are the net of friend_balances (which already
+  // accounts for settlements), not month-scoped pending shares — so they stay
+  // correct after partial settle-ups.
+  const toReceivePaise = allBalances.reduce(
+    (sum, f) => sum + Math.max(f.net_owed_to_me_paise, 0),
+    0
+  );
+  const toPayPaise = allBalances.reduce(
+    (sum, f) => sum + Math.max(-f.net_owed_to_me_paise, 0),
+    0
+  );
+
+  const dashboard: DashboardData = {
+    total_spent_paise: rpc?.total_spent_paise ?? 0,
+    to_receive_paise: toReceivePaise,
+    to_pay_paise: toPayPaise,
+    total_outstanding_paise: toReceivePaise,
+    by_category: rpc?.by_category ?? [],
+    by_payment_method: rpc?.by_payment_method ?? [],
+    daily_totals: rpc?.daily_totals ?? [],
   };
 
   const recentExpenses: RecentExpense[] = (expensesRes.data as RecentExpense[] | null) ?? [];
-  const friendBalances: FriendBalance[] = (friendsRes.data as FriendBalance[] | null) ?? [];
-
-  // Use the original param for display (not UTC-converted monthStart which can shift months)
-  const monthValue = monthParam ?? currentMonthIST();
+  const friendBalances: FriendBalance[] = allBalances.slice(0, 3);
 
   return (
     <DashboardView

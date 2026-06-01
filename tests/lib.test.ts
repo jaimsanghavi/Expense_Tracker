@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { toPaise, toRupees, formatINR } from "@/lib/money";
 import { splitEqual, validateShares, splitByPercentage } from "@/lib/splits";
+import { monthRangeUTC, yearRangeUTC, formatISTDateLabel } from "@/lib/dates";
+import { computeNextRunUTC } from "@/lib/recurring";
+import { sanitizeSearchTerm } from "@/lib/search";
 
 describe("money", () => {
   it("converts rupees to paise", () => {
@@ -12,6 +15,12 @@ describe("money", () => {
   it("converts paise to rupees", () => {
     expect(toRupees(10000)).toBe(100);
     expect(toRupees(150)).toBe(1.5);
+  });
+
+  it("rejects non-numeric amounts instead of producing NaN", () => {
+    expect(() => toPaise("abc")).toThrow();
+    expect(() => toPaise(NaN)).toThrow();
+    expect(() => toPaise(Infinity)).toThrow();
   });
 
   it("formats INR with Indian grouping", () => {
@@ -50,5 +59,95 @@ describe("splits", () => {
   it("splits by percentage with rounding", () => {
     const result = splitByPercentage(100, [33, 33, 34]);
     expect(result.reduce((a, b) => a + b, 0)).toBe(100);
+  });
+
+  it("only allocates the given portion when percentages sum below 100", () => {
+    // Two friends at 30% each of ₹10 should owe ₹3 each — the remaining 40%
+    // is the user's share, NOT dumped onto the friends.
+    expect(splitByPercentage(1000, [30, 30])).toEqual([300, 300]);
+  });
+
+  it("distributes only the rounding remainder within the allocated target", () => {
+    // 10 paise at 33/33/34% → raw floors [3,3,3]=9, 1 paise remainder to first.
+    expect(splitByPercentage(10, [33, 33, 34])).toEqual([4, 3, 3]);
+  });
+
+  it("throws when percentages exceed 100", () => {
+    expect(() => splitByPercentage(1000, [60, 60])).toThrow();
+  });
+
+  it("throws on a negative percentage", () => {
+    expect(() => splitByPercentage(1000, [-10, 50])).toThrow();
+  });
+});
+
+describe("date ranges (IST, half-open)", () => {
+  it("returns IST month start (inclusive) and next-month start (exclusive) as UTC", () => {
+    // Any instant within May 2026 IST should yield the same window.
+    const { start, end } = monthRangeUTC(new Date("2026-05-15T00:00:00Z"));
+    expect(start).toBe("2026-04-30T18:30:00.000Z"); // 2026-05-01 00:00 IST
+    expect(end).toBe("2026-05-31T18:30:00.000Z"); // 2026-06-01 00:00 IST
+  });
+
+  it("spans the December→January boundary correctly", () => {
+    const { start, end } = monthRangeUTC(new Date("2026-12-10T00:00:00Z"));
+    expect(start).toBe("2026-11-30T18:30:00.000Z"); // 2026-12-01 00:00 IST
+    expect(end).toBe("2026-12-31T18:30:00.000Z"); // 2027-01-01 00:00 IST
+  });
+
+  it("returns IST year start (inclusive) and next-year start (exclusive) as UTC", () => {
+    const { start, end } = yearRangeUTC(2026);
+    expect(start).toBe("2025-12-31T18:30:00.000Z"); // 2026-01-01 00:00 IST
+    expect(end).toBe("2026-12-31T18:30:00.000Z"); // 2027-01-01 00:00 IST
+  });
+
+  it("formats an IST date-only string without timezone parsing", () => {
+    expect(formatISTDateLabel("2026-05-01")).toBe("1 May 2026");
+    expect(formatISTDateLabel("2026-12-31")).toBe("31 Dec 2026");
+  });
+});
+
+describe("recurring next-run (IST)", () => {
+  const may15IST = "2026-05-14T18:30:00.000Z"; // 2026-05-15 00:00 IST
+
+  it("advances daily by one IST day", () => {
+    expect(computeNextRunUTC(may15IST, "daily")).toBe("2026-05-15T18:30:00.000Z");
+  });
+
+  it("advances weekly by seven IST days", () => {
+    expect(computeNextRunUTC(may15IST, "weekly")).toBe("2026-05-21T18:30:00.000Z");
+  });
+
+  it("advances monthly preserving the IST day-of-month", () => {
+    expect(computeNextRunUTC(may15IST, "monthly")).toBe("2026-06-14T18:30:00.000Z");
+  });
+
+  it("advances yearly", () => {
+    expect(computeNextRunUTC(may15IST, "yearly")).toBe("2027-05-14T18:30:00.000Z");
+  });
+
+  it("clamps month-end overflow (Jan 31 -> Feb 28) in IST", () => {
+    const jan31IST = "2026-01-30T18:30:00.000Z"; // 2026-01-31 00:00 IST
+    expect(computeNextRunUTC(jan31IST, "monthly")).toBe("2026-02-27T18:30:00.000Z"); // 2026-02-28 00:00 IST
+  });
+});
+
+describe("search term sanitization", () => {
+  it("passes ordinary search text through unchanged", () => {
+    expect(sanitizeSearchTerm("coffee")).toBe("coffee");
+    expect(sanitizeSearchTerm("blue bottle")).toBe("blue bottle");
+  });
+
+  it("strips PostgREST filter-grammar characters to prevent injection", () => {
+    // Commas separate filters and parens group them — both must be removed so a
+    // search value can't break out of the ilike pattern.
+    expect(sanitizeSearchTerm("a,note.ilike.*")).toBe("anote.ilike.*");
+    expect(sanitizeSearchTerm("x)or(paid_by.not.is.null")).toBe(
+      "xorpaid_by.not.is.null"
+    );
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(sanitizeSearchTerm("  tea  ")).toBe("tea");
   });
 });
