@@ -7,6 +7,7 @@ import { sanitizeSearchTerm } from "@/lib/search";
 import { friendNetBalancePaise } from "@/lib/balance";
 import { parseTransactionSms } from "@/lib/sms";
 import { expenseExportRows } from "@/lib/export";
+import { normalizeBulkRows, isBlankBulkRow } from "@/lib/bulk";
 
 describe("money", () => {
   it("converts rupees to paise", () => {
@@ -370,5 +371,37 @@ describe("expenseExportRows", () => {
     expect(row.paymentMethod).toBe("UPI");
     expect(row.amount).toBe(100);
     expect(row.merchant).toBe("Dinner");
+  });
+});
+
+describe("normalizeBulkRows", () => {
+  it("flags rows without an amount as blank", () => {
+    expect(isBlankBulkRow({ amount: "", date: "2026-05-18", categoryId: "", note: "" })).toBe(true);
+    expect(isBlankBulkRow({ amount: "  ", date: "2026-05-18", categoryId: "", note: "" })).toBe(true);
+    expect(isBlankBulkRow({ amount: "100", date: "2026-05-18", categoryId: "", note: "" })).toBe(false);
+  });
+
+  it("drops blank rows and converts the IST date to UTC at IST midnight", () => {
+    const result = normalizeBulkRows([
+      { amount: "100", date: "2026-05-18", categoryId: "c1", note: "lunch" },
+      { amount: "", date: "2026-05-19", categoryId: "", note: "" },
+    ]);
+    expect(result).toEqual([
+      {
+        amount: "100",
+        spent_at: "2026-05-17T18:30:00.000Z", // 2026-05-18 00:00 IST
+        category_id: "c1",
+        note: "lunch",
+      },
+    ]);
+  });
+
+  it("normalizes empty category and note to null and trims values", () => {
+    const [row] = normalizeBulkRows([
+      { amount: " 250 ", date: "2026-05-18", categoryId: "", note: "  " },
+    ]);
+    expect(row.category_id).toBeNull();
+    expect(row.note).toBeNull();
+    expect(row.amount).toBe("250");
   });
 });

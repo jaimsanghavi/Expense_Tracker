@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Receipt, Users, Download, Loader2 } from "lucide-react";
+import { Plus, Search, Receipt, Users, Download, Loader2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -185,12 +185,20 @@ export function ExpenseList({
           <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track your daily spending</p>
         </div>
-        <Link href="/expenses/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Expense
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/expenses/bulk">
+            <Button variant="outline">
+              <Layers className="mr-2 h-4 w-4" />
+              Bulk add
+            </Button>
+          </Link>
+          <Link href="/expenses/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Expense
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filter bar */}

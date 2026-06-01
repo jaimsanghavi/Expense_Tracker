@@ -149,6 +149,74 @@ export async function createExpense(formData: FormData) {
   }
 }
 
+export async function createExpensesBulk(
+  rows: {
+    amount: string; // rupees, as typed
+    spent_at: string; // already a UTC ISO string (caller converts via istLocalToUTC)
+    category_id: string | null;
+    note: string | null;
+  }[]
+): Promise<
+  { error: string; success?: undefined } | { success: true; count: number }
+> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  // Drop blank rows (no amount entered) before validating.
+  const filled = rows.filter((r) => r.amount?.trim());
+
+  const records: {
+    user_id: string;
+    amount_paise: number;
+    spent_at: string;
+    category_id: string | null;
+    note: string | null;
+    is_split: boolean;
+    paid_by: null;
+    merchant: null;
+    payment_method_id: null;
+  }[] = [];
+
+  for (const row of filled) {
+    let amountPaise: number;
+    try {
+      amountPaise = toPaise(row.amount);
+    } catch {
+      return { error: `Invalid amount: ${row.amount}` };
+    }
+    if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
+      return { error: `Amount must be greater than 0: ${row.amount}` };
+    }
+
+    records.push({
+      user_id: user.id,
+      amount_paise: amountPaise,
+      spent_at: row.spent_at,
+      category_id: row.category_id,
+      note: row.note,
+      is_split: false,
+      paid_by: null,
+      merchant: null,
+      payment_method_id: null,
+    });
+  }
+
+  if (records.length === 0) {
+    return { error: "Add at least one expense with an amount." };
+  }
+
+  const { error } = await supabase.from("expenses").insert(records);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/expenses");
+  revalidatePath("/dashboard");
+
+  return { success: true, count: records.length };
+}
+
 async function triggerLargeExpenseNotification(
   userId: string,
   amountPaise: number,
