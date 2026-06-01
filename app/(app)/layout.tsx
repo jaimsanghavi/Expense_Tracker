@@ -21,7 +21,7 @@ export default async function AppLayout({
     <div className="flex h-screen">
       <AppSidebar />
       <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
-        <div className="mx-auto max-w-5xl p-4 md:p-8">
+        <div className="mx-auto max-w-5xl px-4 pt-4 pb-24 md:px-8 md:pt-8">
           {children}
         </div>
       </main>

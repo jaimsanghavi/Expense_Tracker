@@ -15,13 +15,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { formatINR } from "@/lib/money";
-import { createFriend, updateFriend, deleteFriend } from "./actions";
+import { createFriend, updateFriend, deleteFriend, getFriend } from "./actions";
 
 type Friend = {
   friend_id: string;
   name: string;
   net_owed_to_me_paise: number;
+};
+
+type EditingFriend = {
+  friend_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  upi_handle: string | null;
 };
 
 interface FriendListProps {
@@ -33,7 +42,7 @@ export function FriendList({ friends }: FriendListProps) {
   const [isPending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editingFriend, setEditingFriend] = useState<Friend | null>(null);
+  const [editingFriend, setEditingFriend] = useState<EditingFriend | null>(null);
 
   const sorted = [...friends].sort(
     (a, b) =>
@@ -44,8 +53,11 @@ export function FriendList({ friends }: FriendListProps) {
     startTransition(async () => {
       const result = await createFriend(formData);
       if (result?.success) {
+        toast.success("Friend added");
         setAddOpen(false);
         router.refresh();
+      } else if (result?.error) {
+        toast.error(result.error);
       }
     });
   }
@@ -55,17 +67,47 @@ export function FriendList({ friends }: FriendListProps) {
     startTransition(async () => {
       const result = await updateFriend(editingFriend.friend_id, formData);
       if (result?.success) {
+        toast.success("Friend updated");
         setEditOpen(false);
         setEditingFriend(null);
         router.refresh();
+      } else if (result?.error) {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function handleEdit(friend: Friend) {
+    startTransition(async () => {
+      try {
+        const full = await getFriend(friend.friend_id);
+        setEditingFriend({
+          friend_id: full.id,
+          name: full.name,
+          phone: full.phone ?? null,
+          email: full.email ?? null,
+          upi_handle: full.upi_handle ?? null,
+        });
+        setEditOpen(true);
+      } catch {
+        toast.error("Couldn't load friend details");
       }
     });
   }
 
   async function handleDelete(id: string) {
+    if (
+      !confirm("Remove this friend? Their share history on past expenses stays.")
+    )
+      return;
     startTransition(async () => {
-      await deleteFriend(id);
-      router.refresh();
+      try {
+        await deleteFriend(id);
+        toast.success("Friend removed");
+        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't remove friend");
+      }
     });
   }
 
@@ -166,10 +208,7 @@ export function FriendList({ friends }: FriendListProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    setEditingFriend(friend);
-                    setEditOpen(true);
-                  }}
+                  onClick={() => handleEdit(friend)}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -196,7 +235,11 @@ export function FriendList({ friends }: FriendListProps) {
               Update your friend&apos;s details.
             </DialogDescription>
           </DialogHeader>
-          <form action={handleUpdate} className="space-y-4">
+          <form
+            action={handleUpdate}
+            className="space-y-4"
+            key={editingFriend?.friend_id}
+          >
             <div className="space-y-2">
               <Label htmlFor="edit-name">Name *</Label>
               <Input
@@ -208,15 +251,28 @@ export function FriendList({ friends }: FriendListProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-phone">Phone</Label>
-              <Input id="edit-phone" name="phone" />
+              <Input
+                id="edit-phone"
+                name="phone"
+                defaultValue={editingFriend?.phone ?? ""}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-email">Email</Label>
-              <Input id="edit-email" name="email" type="email" />
+              <Input
+                id="edit-email"
+                name="email"
+                type="email"
+                defaultValue={editingFriend?.email ?? ""}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-upi">UPI Handle</Label>
-              <Input id="edit-upi" name="upi_handle" />
+              <Input
+                id="edit-upi"
+                name="upi_handle"
+                defaultValue={editingFriend?.upi_handle ?? ""}
+              />
             </div>
             <DialogFooter>
               <Button type="submit" disabled={isPending}>

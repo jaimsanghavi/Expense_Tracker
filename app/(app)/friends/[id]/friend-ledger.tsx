@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import { formatINR } from "@/lib/money";
 import { formatDateIST } from "@/lib/dates";
 import { createSettlement, type LedgerEntry } from "../actions";
@@ -74,8 +75,11 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
     startTransition(async () => {
       const result = await createSettlement(formData);
       if (result?.success) {
+        toast.success("Settlement recorded");
         setSettleOpen(false);
         router.refresh();
+      } else if (result?.error) {
+        toast.error(result.error);
       }
     });
   }
@@ -130,11 +134,16 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
                   step="0.01"
                   min="0.01"
                   required
+                  defaultValue={
+                    netBalance !== 0
+                      ? (Math.abs(netBalance) / 100).toFixed(2)
+                      : undefined
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="direction">Direction *</Label>
-                <Select name="direction" required items={[{value:"from_friend",label:"They paid me"},{value:"to_friend",label:"I paid them"}]}>
+                <Select name="direction" required defaultValue={netBalance > 0 ? "from_friend" : netBalance < 0 ? "to_friend" : undefined} items={[{value:"from_friend",label:"They paid me"},{value:"to_friend",label:"I paid them"}]}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select direction" />
                   </SelectTrigger>

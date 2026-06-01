@@ -139,7 +139,7 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-[300px] rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95">
+        <div className="absolute top-full left-0 mt-2 z-50 w-[min(300px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95">
           {/* Month/Year header */}
           <div className="flex items-center justify-between mb-3">
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={prevMonth}>

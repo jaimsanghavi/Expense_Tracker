@@ -65,7 +65,7 @@ export function MonthPicker({ value, onChange, className }: MonthPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 z-50 w-64 rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95">
+        <div className="absolute top-full right-0 mt-2 z-50 w-[min(16rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95">
           {/* Year navigation */}
           <div className="flex items-center justify-between mb-3">
             <Button
