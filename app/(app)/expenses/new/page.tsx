@@ -1,13 +1,11 @@
 import { getCategories } from "@/app/(app)/settings/categories/actions";
 import { getPaymentMethods } from "@/app/(app)/settings/payment-methods/actions";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { ExpenseForm } from "../expense-form";
 
 async function getFriends() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -23,10 +21,7 @@ async function getFriends() {
 }
 
 export default async function NewExpensePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

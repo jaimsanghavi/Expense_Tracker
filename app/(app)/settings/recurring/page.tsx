@@ -1,12 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getRecurringExpenses } from "./actions";
 import { RecurringList } from "./recurring-list";
 
 export default async function RecurringPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

@@ -1,14 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { paymentMethodSchema } from "@/lib/schemas";
 
 export async function getPaymentMethods() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -25,9 +23,7 @@ export async function getPaymentMethods() {
 
 export async function createPaymentMethod(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -58,9 +54,7 @@ export async function createPaymentMethod(formData: FormData) {
 
 export async function updatePaymentMethod(id: string, formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -94,9 +88,7 @@ export async function updatePaymentMethod(id: string, formData: FormData) {
 
 export async function deletePaymentMethod(id: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

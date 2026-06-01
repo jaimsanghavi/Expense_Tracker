@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function subscribePush(subscription: {
@@ -8,9 +8,7 @@ export async function subscribePush(subscription: {
   keys: { p256dh: string; auth: string };
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -30,9 +28,7 @@ export async function subscribePush(subscription: {
 
 export async function unsubscribePush(endpoint: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -48,9 +44,7 @@ export async function unsubscribePush(endpoint: string) {
 
 export async function getNotificationPreferences() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 
@@ -72,9 +66,7 @@ export async function updateNotificationPreferences(prefs: {
   notify_recurring_due?: boolean;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) throw new Error("Unauthorized");
 

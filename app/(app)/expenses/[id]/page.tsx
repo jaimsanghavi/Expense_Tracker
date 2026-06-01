@@ -3,7 +3,7 @@ import { getExpense } from "./actions";
 import { getCategories } from "@/app/(app)/settings/categories/actions";
 import { getPaymentMethods } from "@/app/(app)/settings/payment-methods/actions";
 import { ExpenseDetail } from "./expense-detail";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export default async function ExpenseDetailPage({
   params,
@@ -12,10 +12,7 @@ export default async function ExpenseDetailPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) notFound();
 
