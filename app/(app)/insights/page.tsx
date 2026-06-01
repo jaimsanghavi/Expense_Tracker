@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import { currentYearIST, yearRangeUTC, getMonthIST } from "@/lib/dates";
+import { currentYearIST } from "@/lib/dates";
 import { InsightsView } from "./insights-view";
 import { InsightsSkeleton } from "./insights-skeleton";
 
@@ -62,8 +62,6 @@ async function InsightsContent({
   const currentYear = currentYearIST();
   const year = params.year ? parseInt(params.year, 10) : currentYear;
 
-  const { start: yearStart, end: yearEnd } = yearRangeUTC(year);
-
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) {
@@ -71,56 +69,25 @@ async function InsightsContent({
     redirect("/login");
   }
 
-  const { data: expenses } = await supabase
-    .from("expenses")
-    .select(
-      "amount_paise, spent_at, is_split, category:categories(name, color, icon), payment_method:payment_methods(name, type), expense_shares(share_paise)"
-    )
-    .gte("spent_at", yearStart)
-    .lt("spent_at", yearEnd)
-    .is("paid_by", null)
-    .order("spent_at", { ascending: true });
+  type YearInsights = {
+    monthly_totals: { month: number; total_paise: number }[];
+    by_category: CategoryTotal[];
+    by_payment_method: PaymentMethodTotal[];
+  };
 
-  const rows = (expenses ?? []).map((e) => {
-    const friendSharesTotal = (e.expense_shares as { share_paise: number }[] | null)?.reduce(
-      (s: number, sh: { share_paise: number }) => s + sh.share_paise, 0
-    ) ?? 0;
-    return {
-      amount_paise: e.amount_paise - friendSharesTotal,
-      spent_at: e.spent_at,
-      category: e.category as unknown as { name: string; color: string; icon: string } | null,
-      payment_method: e.payment_method as unknown as { name: string; type: string } | null,
-    };
+  const { data: rpcData } = await supabase.rpc("get_year_insights", {
+    p_year_start: `${year}-01-01`,
   });
+  const agg = (rpcData as YearInsights | null) ?? {
+    monthly_totals: [],
+    by_category: [],
+    by_payment_method: [],
+  };
 
-  // Monthly totals (0-11)
+  // Expand the sparse per-month rows into a fixed 0-11 array.
   const monthBuckets = Array.from({ length: 12 }, () => 0);
-  const categoryMap = new Map<string, CategoryTotal>();
-  const pmMap = new Map<string, PaymentMethodTotal>();
-
-  for (const row of rows) {
-    const monthIdx = getMonthIST(row.spent_at);
-    monthBuckets[monthIdx] += row.amount_paise;
-
-    if (row.category) {
-      const key = row.category.name;
-      const existing = categoryMap.get(key);
-      if (existing) {
-        existing.total_paise += row.amount_paise;
-      } else {
-        categoryMap.set(key, { ...row.category, total_paise: row.amount_paise });
-      }
-    }
-
-    if (row.payment_method) {
-      const key = row.payment_method.name;
-      const existing = pmMap.get(key);
-      if (existing) {
-        existing.total_paise += row.amount_paise;
-      } else {
-        pmMap.set(key, { ...row.payment_method, total_paise: row.amount_paise });
-      }
-    }
+  for (const m of agg.monthly_totals) {
+    if (m.month >= 0 && m.month < 12) monthBuckets[m.month] = m.total_paise;
   }
 
   const monthly_totals: MonthlyTotal[] = monthBuckets.map((total, i) => ({
@@ -137,16 +104,12 @@ async function InsightsContent({
 
   const highest_month =
     nonZeroMonths.length > 0
-      ? nonZeroMonths.reduce((a, b) =>
-          a.total_paise >= b.total_paise ? a : b
-        )
+      ? nonZeroMonths.reduce((a, b) => (a.total_paise >= b.total_paise ? a : b))
       : null;
 
   const lowest_month =
     nonZeroMonths.length > 0
-      ? nonZeroMonths.reduce((a, b) =>
-          a.total_paise <= b.total_paise ? a : b
-        )
+      ? nonZeroMonths.reduce((a, b) => (a.total_paise <= b.total_paise ? a : b))
       : null;
 
   const month_trends: MonthTrend[] = monthly_totals.map((m, i) => {
@@ -158,14 +121,6 @@ async function InsightsContent({
     return { month: m.month, total_paise: m.total_paise, change_pct };
   });
 
-  const by_category = Array.from(categoryMap.values()).sort(
-    (a, b) => b.total_paise - a.total_paise
-  );
-
-  const by_payment_method = Array.from(pmMap.values()).sort(
-    (a, b) => b.total_paise - a.total_paise
-  );
-
   const data: InsightsData = {
     year,
     total_paise,
@@ -176,10 +131,10 @@ async function InsightsContent({
     lowest_month: lowest_month
       ? { month: lowest_month.month, total_paise: lowest_month.total_paise }
       : null,
-    categories_used: categoryMap.size,
+    categories_used: agg.by_category.length,
     monthly_totals,
-    by_category,
-    by_payment_method,
+    by_category: agg.by_category,
+    by_payment_method: agg.by_payment_method,
     month_trends,
   };
 
