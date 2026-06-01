@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { formatINR } from "@/lib/money";
 import { formatDateIST } from "@/lib/dates";
+import { friendNetBalancePaise } from "@/lib/balance";
 import { createSettlement, type LedgerEntry } from "../actions";
 
 type Friend = {
@@ -52,20 +53,9 @@ export function FriendLedger({ friend, ledger }: FriendLedgerProps) {
   const [isPending, startTransition] = useTransition();
   const [settleOpen, setSettleOpen] = useState(false);
 
-  // Compute net balance from ledger
-  // Only count pending shares — FIFO marks settled shares as 'paid'
-  // Positive = friend owes us, negative = we owe friend
-  const netBalance = ledger.reduce((acc, entry) => {
-    if (entry.type === "expense" && entry.status === "pending") {
-      if (!entry.paid_by) {
-        // We paid → friend owes us this share
-        return acc + entry.share_paise;
-      }
-      // Friend paid → we owe them
-      return acc - entry.share_paise;
-    }
-    return acc;
-  }, 0);
+  // Net balance (Model B): pending shares net of settlements. Positive = friend
+  // owes us, negative = we owe them. Mirrors the friend_balances view.
+  const netBalance = friendNetBalancePaise(ledger);
 
   async function handleSettle(formData: FormData) {
     formData.set("friend_id", friend.id);

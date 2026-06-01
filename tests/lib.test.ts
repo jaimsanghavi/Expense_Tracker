@@ -4,6 +4,7 @@ import { splitEqual, validateShares, splitByPercentage } from "@/lib/splits";
 import { monthRangeUTC, yearRangeUTC, formatISTDateLabel } from "@/lib/dates";
 import { computeNextRunUTC } from "@/lib/recurring";
 import { sanitizeSearchTerm } from "@/lib/search";
+import { friendNetBalancePaise } from "@/lib/balance";
 
 describe("money", () => {
   it("converts rupees to paise", () => {
@@ -149,5 +150,60 @@ describe("search term sanitization", () => {
 
   it("trims surrounding whitespace", () => {
     expect(sanitizeSearchTerm("  tea  ")).toBe("tea");
+  });
+});
+
+describe("friend net balance (Model B, settlement-aware)", () => {
+  it("adds pending shares the friend owes me (I paid)", () => {
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "pending", paid_by: null, share_paise: 1000 },
+      ])
+    ).toBe(1000);
+  });
+
+  it("subtracts pending shares I owe (friend paid)", () => {
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "pending", paid_by: "f1", share_paise: 1000 },
+      ])
+    ).toBe(-1000);
+  });
+
+  it("ignores non-pending shares", () => {
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "paid", paid_by: null, share_paise: 1000 },
+      ])
+    ).toBe(0);
+  });
+
+  it("subtracts a from_friend settlement (they paid me back) — the bug", () => {
+    // Friend owed me ₹10; they settled ₹10 → net 0.
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "pending", paid_by: null, share_paise: 1000 },
+        { type: "settlement", direction: "from_friend", amount_paise: 1000 },
+      ])
+    ).toBe(0);
+  });
+
+  it("handles a partial from_friend settlement", () => {
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "pending", paid_by: null, share_paise: 1000 },
+        { type: "settlement", direction: "from_friend", amount_paise: 600 },
+      ])
+    ).toBe(400);
+  });
+
+  it("adds a to_friend settlement (I paid them back)", () => {
+    // I owed friend ₹10; I settled ₹10 → net 0.
+    expect(
+      friendNetBalancePaise([
+        { type: "expense", status: "pending", paid_by: "f1", share_paise: 1000 },
+        { type: "settlement", direction: "to_friend", amount_paise: 1000 },
+      ])
+    ).toBe(0);
   });
 });
