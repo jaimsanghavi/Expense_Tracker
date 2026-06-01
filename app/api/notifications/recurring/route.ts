@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { formatINR } from "@/lib/money";
-import { computeNextRunUTC } from "@/lib/recurring";
+import { planRecurringRuns } from "@/lib/recurring";
 import type { Cadence } from "@/lib/schemas";
 
 function getServiceClient() {
@@ -34,7 +34,9 @@ export async function GET(request: Request) {
   // Find recurring expenses where next_run_at is today or earlier
   const { data: recurring } = await supabase
     .from("recurring_expenses")
-    .select("id, user_id, amount_paise, note, cadence, next_run_at")
+    .select(
+      "id, user_id, amount_paise, note, cadence, next_run_at, category_id, payment_method_id"
+    )
     .eq("is_active", true)
     .lte("next_run_at", now);
 
@@ -54,16 +56,40 @@ export async function GET(request: Request) {
 
   let sent = 0;
   for (const expense of recurring) {
-    // Advance next_run_at regardless of whether we send a notification
-    const nextRun = computeNextRunUTC(
+    // Plan every missed period (capped catch-up) and the new next_run_at.
+    const { runs, nextRunAt } = planRecurringRuns(
       expense.next_run_at,
-      expense.cadence as Cadence
+      expense.cadence as Cadence,
+      now
     );
+
+    // Materialize one personal expense per due period. The unique index on
+    // (recurring_id, spent_at) plus ignoreDuplicates makes this idempotent, so
+    // a retried or overlapping cron run won't double-insert.
+    if (runs.length > 0) {
+      await supabase.from("expenses").upsert(
+        runs.map((run) => ({
+          user_id: expense.user_id,
+          amount_paise: expense.amount_paise,
+          spent_at: run,
+          category_id: expense.category_id,
+          payment_method_id: expense.payment_method_id,
+          note: expense.note,
+          is_split: false,
+          paid_by: null,
+          recurring_id: expense.id,
+        })),
+        { onConflict: "recurring_id,spent_at", ignoreDuplicates: true }
+      );
+    }
+
+    // Advance next_run_at regardless of whether we send a notification.
     await supabase
       .from("recurring_expenses")
-      .update({ next_run_at: nextRun })
+      .update({ next_run_at: nextRunAt })
       .eq("id", expense.id);
 
+    if (runs.length === 0) continue;
     if (!notifyUserIds.has(expense.user_id)) continue;
 
     const amount = formatINR(expense.amount_paise);
@@ -72,7 +98,7 @@ export async function GET(request: Request) {
     await sendPushToUser(
       expense.user_id,
       {
-        title: "Recurring Expense Due",
+        title: "Recurring expense added",
         body: `${label} — ${amount}`,
         tag: `recurring-${expense.id}`,
         url: "/settings/recurring",

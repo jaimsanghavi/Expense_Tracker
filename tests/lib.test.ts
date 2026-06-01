@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { toPaise, toRupees, formatINR } from "@/lib/money";
 import { splitEqual, validateShares, splitByPercentage } from "@/lib/splits";
 import { monthRangeUTC, yearRangeUTC, formatISTDateLabel } from "@/lib/dates";
-import { computeNextRunUTC } from "@/lib/recurring";
+import { computeNextRunUTC, planRecurringRuns } from "@/lib/recurring";
 import { sanitizeSearchTerm } from "@/lib/search";
 import { friendNetBalancePaise } from "@/lib/balance";
 
@@ -130,6 +130,53 @@ describe("recurring next-run (IST)", () => {
   it("clamps month-end overflow (Jan 31 -> Feb 28) in IST", () => {
     const jan31IST = "2026-01-30T18:30:00.000Z"; // 2026-01-31 00:00 IST
     expect(computeNextRunUTC(jan31IST, "monthly")).toBe("2026-02-27T18:30:00.000Z"); // 2026-02-28 00:00 IST
+  });
+});
+
+describe("planRecurringRuns", () => {
+  const nowISO = "2026-05-20T00:00:00.000Z";
+
+  it("returns no runs when next_run_at is in the future", () => {
+    const future = "2026-05-25T00:00:00.000Z";
+    const { runs, nextRunAt } = planRecurringRuns(future, "daily", nowISO);
+    expect(runs).toEqual([]);
+    expect(nextRunAt).toBe(future); // unchanged
+  });
+
+  it("returns a single run when exactly due now", () => {
+    const { runs, nextRunAt } = planRecurringRuns(nowISO, "daily", nowISO);
+    expect(runs).toEqual([nowISO]);
+    expect(nextRunAt).toBe("2026-05-21T00:00:00.000Z"); // advanced past now
+  });
+
+  it("materializes one run per missed daily period when overdue", () => {
+    // 3 days overdue: 05-18, 05-19, 05-20 are due; 05-21 is the next future run.
+    const { runs, nextRunAt } = planRecurringRuns(
+      "2026-05-18T00:00:00.000Z",
+      "daily",
+      nowISO
+    );
+    expect(runs).toEqual([
+      "2026-05-18T00:00:00.000Z",
+      "2026-05-19T00:00:00.000Z",
+      "2026-05-20T00:00:00.000Z",
+    ]);
+    expect(nextRunAt).toBe("2026-05-21T00:00:00.000Z");
+    expect(new Date(nextRunAt).getTime()).toBeGreaterThan(
+      new Date(nowISO).getTime()
+    );
+  });
+
+  it("caps the number of catch-up runs for a far-overdue daily schedule", () => {
+    // Years overdue: without a cap this would produce thousands of runs.
+    const farPast = "2020-01-01T00:00:00.000Z";
+    const { runs } = planRecurringRuns(farPast, "daily", nowISO);
+    expect(runs).toHaveLength(60); // default cap
+    expect(runs[0]).toBe(farPast); // oldest first
+
+    const capped = planRecurringRuns(farPast, "daily", nowISO, 5);
+    expect(capped.runs).toHaveLength(5);
+    expect(capped.nextRunAt).toBe("2020-01-06T00:00:00.000Z"); // 5 days later
   });
 });
 

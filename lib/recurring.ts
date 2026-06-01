@@ -36,3 +36,28 @@ export function computeNextRunUTC(
   }
   return fromZonedTime(next, IST).toISOString();
 }
+
+/**
+ * Plan which recurring runs are due as of `nowISO`, walking from `nextRunAtISO`
+ * forward one cadence at a time. Every instant `<= now` (up to `cap`) is a
+ * period to materialize; the returned `nextRunAt` is the first instant still in
+ * the future (the value to persist). Pure and runtime-timezone independent.
+ *
+ * @returns `runs` — due period instants oldest→newest (length 0 if nothing due);
+ *          `nextRunAt` — the new `next_run_at` to store.
+ */
+export function planRecurringRuns(
+  nextRunAtISO: string,
+  cadence: Cadence,
+  nowISO: string,
+  cap = 60
+): { runs: string[]; nextRunAt: string } {
+  const now = new Date(nowISO).getTime();
+  const runs: string[] = [];
+  let cursor = nextRunAtISO;
+  while (new Date(cursor).getTime() <= now && runs.length < cap) {
+    runs.push(cursor);
+    cursor = computeNextRunUTC(cursor, cadence);
+  }
+  return { runs, nextRunAt: cursor };
+}
