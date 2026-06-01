@@ -26,6 +26,8 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  MessageSquareText,
+  ChevronDown,
 } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import { DateTimePicker } from "@/components/datetime-picker";
@@ -33,6 +35,7 @@ import { createExpense, updateExpenseReceipt } from "./actions";
 import { toPaise, formatINR } from "@/lib/money";
 import { splitEqual, splitByPercentage, validateShares } from "@/lib/splits";
 import { nowISTLocalString } from "@/lib/dates";
+import { parseTransactionSms } from "@/lib/sms";
 
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
@@ -69,6 +72,10 @@ export function ExpenseForm({
   const [merchant, setMerchant] = useState("");
   const [note, setNote] = useState("");
 
+  // Paste-SMS autofill (optional helper)
+  const [smsText, setSmsText] = useState("");
+  const [smsOpen, setSmsOpen] = useState(false);
+
   // Split state
   const [isSplit, setIsSplit] = useState(false);
   const [paidBy, setPaidBy] = useState<string>(""); // empty = user paid
@@ -96,6 +103,25 @@ export function ExpenseForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const amountPaise = amount ? toPaise(amount) : 0;
+
+  // Paste-SMS handling: parse a pasted bank/UPI SMS and autofill fields.
+  function handleSmsChange(value: string) {
+    setSmsText(value);
+    const parsed = parseTransactionSms(value);
+
+    // Only fill a field when the SMS actually yields a value, so an empty or
+    // unrecognized paste never wipes what the user already typed.
+    if (parsed.amountPaise !== null) {
+      setAmount((parsed.amountPaise / 100).toString());
+    }
+    if (parsed.merchant) {
+      setMerchant(parsed.merchant);
+    }
+    // Unobtrusive note hint — don't overwrite a note the user already wrote.
+    if (parsed.merchant && !note) {
+      setNote(`Imported from SMS — ${parsed.merchant}`);
+    }
+  }
 
   // Receipt handling
   async function handleReceiptSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -380,6 +406,34 @@ export function ExpenseForm({
       </Card>
 
       <Separator />
+
+      {/* Paste-SMS autofill (optional helper) */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setSmsOpen((o) => !o)}
+          aria-expanded={smsOpen}
+          className="flex w-full items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <MessageSquareText className="h-4 w-4" />
+          <span className="flex-1 text-left">
+            Paste a bank/UPI SMS to autofill
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${smsOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+        {smsOpen && (
+          <Textarea
+            id="sms-paste"
+            value={smsText}
+            onChange={(e) => handleSmsChange(e.target.value)}
+            placeholder="e.g. Rs.500.00 debited and credited to SWIGGY on 20-05-26. UPI Ref 123"
+            rows={2}
+            aria-label="Paste a bank or UPI SMS to autofill the expense"
+          />
+        )}
+      </div>
 
       {/* Amount */}
       <div className="space-y-2">

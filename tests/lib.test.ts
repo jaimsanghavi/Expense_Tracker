@@ -5,6 +5,7 @@ import { monthRangeUTC, yearRangeUTC, formatISTDateLabel } from "@/lib/dates";
 import { computeNextRunUTC, planRecurringRuns } from "@/lib/recurring";
 import { sanitizeSearchTerm } from "@/lib/search";
 import { friendNetBalancePaise } from "@/lib/balance";
+import { parseTransactionSms } from "@/lib/sms";
 
 describe("money", () => {
   it("converts rupees to paise", () => {
@@ -252,5 +253,58 @@ describe("friend net balance (Model B, settlement-aware)", () => {
         { type: "settlement", direction: "to_friend", amount_paise: 1000 },
       ])
     ).toBe(0);
+  });
+});
+
+describe("parseTransactionSms", () => {
+  it("parses a UPI debit with 'to MERCHANT' and a decimal amount", () => {
+    // "debited" wins over the later "credited"; merchant comes from "to SWIGGY"
+    // and terminates at " on ".
+    expect(
+      parseTransactionSms(
+        "Rs.500.00 debited from a/c XX1234 and credited to SWIGGY on 20-05-26. UPI Ref 123"
+      )
+    ).toEqual({ amountPaise: 50000, merchant: "SWIGGY", kind: "debit" });
+  });
+
+  it("parses an INR card spend with thousands comma and 'at MERCHANT'", () => {
+    expect(
+      parseTransactionSms("INR 1,234.56 spent on your HDFC Card at AMAZON on 19-05")
+    ).toEqual({ amountPaise: 123456, merchant: "AMAZON", kind: "debit" });
+  });
+
+  it("parses a ₹ UPI payment terminating the merchant at ' via '", () => {
+    expect(parseTransactionSms("₹250 paid to Zomato via UPI")).toEqual({
+      amountPaise: 25000,
+      merchant: "Zomato",
+      kind: "debit", // "paid" => debit
+    });
+  });
+
+  it("treats a generic 'to your account' as no merchant on a credit", () => {
+    expect(parseTransactionSms("Rs 2000 credited to your account")).toEqual({
+      amountPaise: 200000,
+      merchant: null,
+      kind: "credit",
+    });
+  });
+
+  it("returns all nulls for a message with no transaction amount", () => {
+    expect(parseTransactionSms("Your OTP is 123456")).toEqual({
+      amountPaise: null,
+      merchant: null,
+      kind: null,
+    });
+  });
+
+  it("never throws on empty or non-string input", () => {
+    expect(parseTransactionSms("")).toEqual({
+      amountPaise: null,
+      merchant: null,
+      kind: null,
+    });
+    expect(
+      parseTransactionSms(undefined as unknown as string)
+    ).toEqual({ amountPaise: null, merchant: null, kind: null });
   });
 });
