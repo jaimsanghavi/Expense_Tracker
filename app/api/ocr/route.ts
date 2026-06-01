@@ -83,6 +83,7 @@ Return a JSON object with these fields:
 - "note": a brief 1-line description of what was purchased (e.g. "Groceries - rice, dal, vegetables"), or null
 - "category_guess": which of these categories best fits: [${categoryNames.map((n) => `"${n}"`).join(", ")}]. Return the exact category name string, or null if none fit.
 - "payment_method_guess": which of these payment methods was likely used based on the receipt: [${paymentMethodNames.map((n) => `"${n}"`).join(", ")}]. Return the exact name string, or null if unclear.
+- "items": an array of the individual line items on the receipt, each as an object { "name": string, "amount": number } where "name" is the item description and "amount" is that line's total price as a number (no currency symbols, same currency convention as "amount" above; include quantity in the price if the line is for multiple units). Omit tax/discount/total/subtotal summary lines. Return an empty array [] if no line items are identifiable.
 - "confidence": a number 0-100 indicating your overall confidence in the extraction
 
 IMPORTANT: Return ONLY the JSON object, no markdown formatting, no code blocks, no explanation.`;
@@ -126,6 +127,29 @@ IMPORTANT: Return ONLY the JSON object, no markdown formatting, no code blocks, 
       if (match) paymentMethodId = match.id;
     }
 
+    // Defensively normalize line items: keep only entries with a usable
+    // numeric amount, and return amounts as strings (same convention as
+    // `amount`). If Gemini omits or malforms `items`, fall back to [].
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .map((item: unknown) => {
+            const obj = (item ?? {}) as { name?: unknown; amount?: unknown };
+            const amountNum = Number(obj.amount);
+            if (!Number.isFinite(amountNum)) return null;
+            const name =
+              typeof obj.name === "string" && obj.name.trim()
+                ? obj.name.trim()
+                : "Item";
+            return { name, amount: String(amountNum) };
+          })
+          .filter(
+            (item: { name: string; amount: string } | null): item is {
+              name: string;
+              amount: string;
+            } => item !== null
+          )
+      : [];
+
     return NextResponse.json({
       amount: parsed.amount ? String(parsed.amount) : null,
       merchant: parsed.merchant ?? null,
@@ -134,6 +158,7 @@ IMPORTANT: Return ONLY the JSON object, no markdown formatting, no code blocks, 
       note: parsed.note ?? null,
       categoryId,
       paymentMethodId,
+      items,
       confidence: parsed.confidence ?? 0,
     });
   } catch (e: unknown) {

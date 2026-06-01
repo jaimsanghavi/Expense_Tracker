@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { toPaise, toRupees, formatINR } from "@/lib/money";
 import { splitEqual, validateShares, splitByPercentage } from "@/lib/splits";
+import { computeItemizedShares } from "@/lib/itemize";
 import { monthRangeUTC, yearRangeUTC, formatISTDateLabel } from "@/lib/dates";
 import { computeNextRunUTC, planRecurringRuns } from "@/lib/recurring";
 import { sanitizeSearchTerm } from "@/lib/search";
@@ -82,6 +83,46 @@ describe("splits", () => {
 
   it("throws on a negative percentage", () => {
     expect(() => splitByPercentage(1000, [-10, 50])).toThrow();
+  });
+});
+
+describe("computeItemizedShares", () => {
+  it("splits one ₹100 item between two participants", () => {
+    expect(
+      computeItemizedShares([{ amountPaise: 10000 }], [["me", "f1"]])
+    ).toEqual({ me: 5000, f1: 5000 });
+  });
+
+  it("assigns the full amount when only one participant shares an item", () => {
+    expect(
+      computeItemizedShares([{ amountPaise: 10000 }], [["f1"]])
+    ).toEqual({ f1: 10000 });
+  });
+
+  it("uses splitEqual remainder distribution for a 3-way split", () => {
+    expect(
+      computeItemizedShares([{ amountPaise: 10000 }], [["me", "f1", "f2"]])
+    ).toEqual({ me: 3334, f1: 3333, f2: 3333 });
+  });
+
+  it("accumulates multiple items per participant", () => {
+    // Item 1 (₹100) split me/f1 → 5000 each.
+    // Item 2 (₹60) assigned to f1 only → 6000.
+    expect(
+      computeItemizedShares(
+        [{ amountPaise: 10000 }, { amountPaise: 6000 }],
+        [["me", "f1"], ["f1"]]
+      )
+    ).toEqual({ me: 5000, f1: 11000 });
+  });
+
+  it("skips items with no assignees", () => {
+    expect(
+      computeItemizedShares(
+        [{ amountPaise: 10000 }, { amountPaise: 5000 }],
+        [["me"], []]
+      )
+    ).toEqual({ me: 10000 });
   });
 });
 

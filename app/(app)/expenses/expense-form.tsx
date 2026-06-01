@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -34,6 +34,7 @@ import { DateTimePicker } from "@/components/datetime-picker";
 import { createExpense, updateExpenseReceipt } from "./actions";
 import { toPaise, formatINR } from "@/lib/money";
 import { splitEqual, splitByPercentage, validateShares } from "@/lib/splits";
+import { computeItemizedShares } from "@/lib/itemize";
 import { nowISTLocalString } from "@/lib/dates";
 import { parseTransactionSms } from "@/lib/sms";
 
@@ -101,6 +102,15 @@ export function ExpenseForm({
   const [ocrConfidence, setOcrConfidence] = useState(0);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // OCR line items + per-item participant assignments (itemIndex -> ids).
+  // Participant id "me" represents the user; others are friend ids.
+  const [ocrItems, setOcrItems] = useState<
+    { name: string; amountPaise: number }[]
+  >([]);
+  const [itemAssignments, setItemAssignments] = useState<
+    Record<number, string[]>
+  >({});
 
   const amountPaise = amount ? toPaise(amount) : 0;
 
@@ -205,6 +215,32 @@ export function ExpenseForm({
         const time = data.time || "12:00";
         setSpentAt(`${data.date}T${time}`);
       }
+
+      // Parse line items defensively — each amount is a rupee string. Skip any
+      // item whose amount can't be converted to paise so a bad row never
+      // breaks the assignment UI.
+      if (Array.isArray(data.items)) {
+        const parsedItems = data.items.flatMap(
+          (item: { name?: string; amount?: string }) => {
+            try {
+              return [
+                {
+                  name:
+                    typeof item.name === "string" && item.name.trim()
+                      ? item.name.trim()
+                      : "Item",
+                  amountPaise: toPaise(item.amount ?? "0"),
+                },
+              ];
+            } catch {
+              return [];
+            }
+          }
+        );
+        setOcrItems(parsedItems);
+        // Reset any prior assignments; defaults are applied on first render.
+        setItemAssignments({});
+      }
     } catch {
       setOcrError("Failed to process receipt. Fill in details manually.");
       setOcrStatus("error");
@@ -219,6 +255,8 @@ export function ExpenseForm({
     setOcrStatus("idle");
     setOcrError(null);
     setOcrConfidence(0);
+    setOcrItems([]);
+    setItemAssignments({});
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -323,6 +361,65 @@ export function ExpenseForm({
     isSplit && selectedFriends.length > 0 && amountPaise > 0
       ? splitEqual(amountPaise, selectedFriends.length + 1)
       : null;
+
+  // --- Itemized assignment (OCR helper) ---
+  // The panel only appears with OCR items AND an active split with friends.
+  const itemizeActive =
+    ocrItems.length > 0 && isSplit && selectedFriends.length > 0;
+
+  // Valid participant ids for the current split: the user ("me") + friends.
+  const participantIds = ["me", ...selectedFriends];
+
+  // Effective assignees for an item: the explicit selection (clamped to
+  // currently-valid participants) or, by default, everyone.
+  function assigneesForItem(index: number): string[] {
+    const explicit = itemAssignments[index];
+    if (!explicit) return participantIds;
+    return explicit.filter((id) => participantIds.includes(id));
+  }
+
+  // Per-participant totals derived from the current assignments.
+  const itemizedTotals = itemizeActive
+    ? computeItemizedShares(
+        ocrItems,
+        ocrItems.map((_, i) => assigneesForItem(i))
+      )
+    : {};
+
+  // Drive the existing split state from the itemized totals so the normal
+  // getShares()/submit path produces the shares. We switch to "amount" mode
+  // and write each friend's computed rupee total (0 if they got no items).
+  // Serialized as a dependency so this only fires on real changes.
+  const itemizedAmountsKey = itemizeActive
+    ? selectedFriends
+        .map((fid) => `${fid}:${itemizedTotals[fid] ?? 0}`)
+        .join("|")
+    : "";
+
+  useEffect(() => {
+    if (!itemizeActive) return;
+    setSplitMode("amount");
+    setCustomAmounts(
+      Object.fromEntries(
+        selectedFriends.map((fid) => [
+          fid,
+          ((itemizedTotals[fid] ?? 0) / 100).toString(),
+        ])
+      )
+    );
+    // itemizedAmountsKey captures the relevant inputs (friends + their totals).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemizeActive, itemizedAmountsKey]);
+
+  function toggleItemAssignee(index: number, participantId: string) {
+    setItemAssignments((prev) => {
+      const current = prev[index] ?? participantIds;
+      const next = current.includes(participantId)
+        ? current.filter((id) => id !== participantId)
+        : [...current, participantId];
+      return { ...prev, [index]: next };
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -614,6 +711,88 @@ export function ExpenseForm({
                 </p>
               )}
             </div>
+
+            {/* Assign items (OCR helper) — appears with OCR line items and an
+                active split. Assigning items drives the Custom Amount shares. */}
+            {itemizeActive && (
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Assign items</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Tap who shared each item. Totals fill in the custom split
+                    below.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {ocrItems.map((item, index) => {
+                    const assignees = assigneesForItem(index);
+                    return (
+                      <div
+                        key={index}
+                        className="space-y-1.5 rounded-md border bg-background p-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="truncate">{item.name}</span>
+                          <span className="font-mono text-muted-foreground">
+                            {formatINR(item.amountPaise)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {participantIds.map((pid) => {
+                            const label =
+                              pid === "me"
+                                ? "You"
+                                : friends.find((f) => f.id === pid)?.name ??
+                                  "Friend";
+                            const active = assignees.includes(pid);
+                            return (
+                              <button
+                                key={pid}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => toggleItemAssignee(index, pid)}
+                                className={`min-h-8 rounded-full border px-3 py-1 text-xs transition-colors ${
+                                  active
+                                    ? "border-primary/40 bg-primary/10 text-foreground"
+                                    : "border-input text-muted-foreground hover:bg-accent"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Per-person summary from the current assignments. */}
+                <div className="space-y-1 border-t pt-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>You</span>
+                    <span className="font-mono">
+                      {formatINR(itemizedTotals["me"] ?? 0)}
+                    </span>
+                  </div>
+                  {selectedFriends.map((fid) => {
+                    const friend = friends.find((f) => f.id === fid);
+                    return (
+                      <div
+                        key={fid}
+                        className="flex justify-between text-muted-foreground"
+                      >
+                        <span className="truncate">{friend?.name}</span>
+                        <span className="font-mono">
+                          {formatINR(itemizedTotals[fid] ?? 0)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Split mode */}
             {selectedFriends.length > 0 && (
