@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { currentYearIST, yearRangeUTC, getMonthIST } from "@/lib/dates";
 import { InsightsView } from "./insights-view";
+import { InsightsSkeleton } from "./insights-skeleton";
 
 interface CategoryTotal {
   name: string;
@@ -39,7 +41,19 @@ export interface InsightsData {
   month_trends: MonthTrend[];
 }
 
-export default async function InsightsPage({
+export default function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  return (
+    <Suspense fallback={<InsightsSkeleton />}>
+      <InsightsContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function InsightsContent({
   searchParams,
 }: {
   searchParams: Promise<{ year?: string }>;

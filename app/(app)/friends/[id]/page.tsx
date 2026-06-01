@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { getFriend, getFriendLedger } from "../actions";
 import { FriendLedger } from "./friend-ledger";
+import { FriendLedgerSkeleton } from "./friend-ledger-skeleton";
 
-export default async function FriendDetailPage({
+async function FriendLedgerContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -13,4 +15,16 @@ export default async function FriendDetailPage({
   ]);
 
   return <FriendLedger friend={friend} ledger={ledger} />;
+}
+
+export default function FriendDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={<FriendLedgerSkeleton />}>
+      <FriendLedgerContent params={params} />
+    </Suspense>
+  );
 }

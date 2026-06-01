@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { currentMonthIST } from "@/lib/dates";
 import { DashboardView } from "./dashboard-view";
+import { DashboardSkeleton } from "./dashboard-skeleton";
 
 interface DashboardData {
   total_spent_paise: number;
@@ -30,7 +32,19 @@ interface FriendBalance {
   net_owed_to_me_paise: number;
 }
 
-export default async function DashboardPage({
+export default function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function DashboardContent({
   searchParams,
 }: {
   searchParams: Promise<{ month?: string }>;
