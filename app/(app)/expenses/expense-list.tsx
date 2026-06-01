@@ -224,6 +224,7 @@ export function ExpenseList({
           variant="outline"
           size="icon"
           title="Export CSV"
+          aria-label="Export CSV"
           onClick={() => {
             const exportMonth = month || new Date().toISOString().slice(0, 7);
             window.open(`/api/export?month=${exportMonth}`, "_blank");

@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -520,33 +521,42 @@ export function ExpenseForm({
             {/* Friend selection */}
             <div className="space-y-2">
               <Label>Split with</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {friends.map((f) => (
-                  <label
-                    key={f.id}
-                    className="flex cursor-pointer items-center gap-2 rounded border p-2 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedFriends.includes(f.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedFriends((prev) => [...prev, f.id]);
-                        } else {
-                          setSelectedFriends((prev) =>
-                            prev.filter((id) => id !== f.id)
-                          );
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    {f.name}
-                  </label>
-                ))}
+              <div className="space-y-1.5">
+                {friends.map((f) => {
+                  const checked = selectedFriends.includes(f.id);
+                  return (
+                    <label
+                      key={f.id}
+                      className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                        checked ? "border-primary/40 bg-primary/10" : "hover:bg-accent"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedFriends((prev) => [...prev, f.id]);
+                          } else {
+                            setSelectedFriends((prev) =>
+                              prev.filter((id) => id !== f.id)
+                            );
+                          }
+                        }}
+                        className="size-4 rounded"
+                      />
+                      <span className="flex-1 truncate">{f.name}</span>
+                    </label>
+                  );
+                })}
               </div>
               {friends.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  No friends added yet. Add friends in Settings.
+                  No friends yet.{" "}
+                  <Link href="/friends" className="text-primary underline">
+                    Add a friend
+                  </Link>{" "}
+                  to split expenses.
                 </p>
               )}
             </div>
@@ -638,8 +648,8 @@ export function ExpenseForm({
                             {friend?.name}
                           </span>
                           <Input
-                            type="number"
-                            inputMode="numeric"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={customPercents[fid] ?? ""}
                             onChange={(e) =>

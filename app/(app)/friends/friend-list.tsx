@@ -182,6 +182,10 @@ export function FriendList({ friends }: FriendListProps) {
           </div>
           <p className="font-medium">No friends yet</p>
           <p className="text-sm mt-1">Add a friend to start splitting expenses</p>
+          <Button className="mt-4" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Friend
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -209,6 +213,7 @@ export function FriendList({ friends }: FriendListProps) {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleEdit(friend)}
+                  aria-label={`Edit ${friend.name}`}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -217,6 +222,7 @@ export function FriendList({ friends }: FriendListProps) {
                   size="icon"
                   onClick={() => handleDelete(friend.friend_id)}
                   disabled={isPending}
+                  aria-label={`Delete ${friend.name}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

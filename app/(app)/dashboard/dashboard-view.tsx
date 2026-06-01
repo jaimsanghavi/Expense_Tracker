@@ -445,7 +445,7 @@ export function DashboardView({
                         {friend.net_owed_to_me_paise > 0 && "+"}
                         {formatINR(Math.abs(friend.net_owed_to_me_paise))}
                       </span>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {friend.net_owed_to_me_paise > 0
                           ? "owes you"
                           : friend.net_owed_to_me_paise < 0

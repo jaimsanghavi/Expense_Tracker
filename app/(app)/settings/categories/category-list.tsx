@@ -182,6 +182,7 @@ export function CategoryList({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleEdit(category)}
+                  aria-label={`Edit ${category.name}`}
                 >
                   <Pencil className="size-3.5" />
                 </Button>
@@ -189,6 +190,7 @@ export function CategoryList({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleDelete(category.id)}
+                  aria-label={`Delete ${category.name}`}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>

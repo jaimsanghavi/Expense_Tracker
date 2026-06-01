@@ -167,6 +167,7 @@ export function ReceiptUpload({
                 size="sm"
                 onClick={handleRemove}
                 disabled={isPending}
+                aria-label="Remove receipt"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

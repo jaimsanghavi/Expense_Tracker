@@ -25,13 +25,13 @@ export default function SettingsLayout({
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Manage your preferences</p>
       </div>
-      <nav className="flex gap-1 rounded-lg bg-muted/50 border p-1 w-fit">
+      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-muted/50 border p-1">
         {tabs.map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
             className={cn(
-              "rounded-md px-3.5 py-2 text-sm font-medium transition-all duration-200",
+              "shrink-0 whitespace-nowrap rounded-md px-3.5 py-2 text-sm font-medium transition-all duration-200",
               pathname === tab.href
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
