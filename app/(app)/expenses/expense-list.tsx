@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Receipt, Users, Download } from "lucide-react";
+import { Plus, Search, Receipt, Users, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,11 +13,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/category-icon";
 import { MonthPicker } from "@/components/month-picker";
 import { formatINR } from "@/lib/money";
 import { formatDateIST } from "@/lib/dates";
+import {
+  expenseExportRows,
+  exportExpensesToExcel,
+  exportExpensesToPdf,
+} from "@/lib/export";
 import { getExpenses } from "./actions";
 
 type Expense = {
@@ -83,6 +94,38 @@ export function ExpenseList({
     filters.paymentMethodId || "all"
   );
   const [search, setSearch] = useState(filters.search ?? "");
+  const [exporting, setExporting] = useState<null | "excel" | "pdf">(null);
+
+  /**
+   * Fetch the FULL filtered set (not just the loaded page) and generate an
+   * Excel/PDF client-side. CSV stays on the existing server route.
+   */
+  async function handleExport(kind: "excel" | "pdf") {
+    if (exporting) return;
+    setExporting(kind);
+    try {
+      const data = await getExpenses({
+        month: filters.month,
+        categoryId: filters.categoryId,
+        paymentMethodId: filters.paymentMethodId,
+        search: filters.search,
+        limit: 10000,
+        offset: 0,
+      });
+      const rows = expenseExportRows(data);
+      const filename = `expenses-${filters.month ?? "all"}`;
+      if (kind === "excel") {
+        await exportExpensesToExcel(rows, filename);
+      } else {
+        const title = `Expenses${filters.month ? ` — ${filters.month}` : ""}`;
+        await exportExpensesToPdf(rows, filename, title);
+      }
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setExporting(null);
+    }
+  }
 
   function applyFilters(overrides?: Record<string, string>) {
     const params = new URLSearchParams();
@@ -220,18 +263,48 @@ export function ExpenseList({
             className="pl-8"
           />
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          title="Export CSV"
-          aria-label="Export CSV"
-          onClick={() => {
-            const exportMonth = month || new Date().toISOString().slice(0, 7);
-            window.open(`/api/export?month=${exportMonth}`, "_blank");
-          }}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                title="Export"
+                aria-label="Export expenses"
+                disabled={exporting !== null}
+              />
+            }
+          >
+            {exporting !== null ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => {
+                const exportMonth =
+                  month || new Date().toISOString().slice(0, 7);
+                window.open(`/api/export?month=${exportMonth}`, "_blank");
+              }}
+            >
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={exporting !== null}
+              onClick={() => handleExport("excel")}
+            >
+              {exporting === "excel" ? "Generating Excel…" : "Export Excel"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={exporting !== null}
+              onClick={() => handleExport("pdf")}
+            >
+              {exporting === "pdf" ? "Generating PDF…" : "Export PDF"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Expense list grouped by date */}

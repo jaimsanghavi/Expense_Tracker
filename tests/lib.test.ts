@@ -6,6 +6,7 @@ import { computeNextRunUTC, planRecurringRuns } from "@/lib/recurring";
 import { sanitizeSearchTerm } from "@/lib/search";
 import { friendNetBalancePaise } from "@/lib/balance";
 import { parseTransactionSms } from "@/lib/sms";
+import { expenseExportRows } from "@/lib/export";
 
 describe("money", () => {
   it("converts rupees to paise", () => {
@@ -306,5 +307,68 @@ describe("parseTransactionSms", () => {
     expect(
       parseTransactionSms(undefined as unknown as string)
     ).toEqual({ amountPaise: null, merchant: null, kind: null });
+  });
+});
+
+describe("expenseExportRows", () => {
+  it("maps a full expense (joined relations as objects) to an ExportRow", () => {
+    const rows = expenseExportRows([
+      {
+        amount_paise: 12345678, // ₹1,23,456.78
+        spent_at: "2026-05-18T06:00:00.000Z", // 18 May 2026 IST
+        merchant: "Blue Bottle",
+        note: "Morning coffee",
+        categories: { name: "Food" },
+        payment_methods: { name: "HDFC Card" },
+      },
+    ]);
+    expect(rows).toEqual([
+      {
+        date: "18 May 2026",
+        merchant: "Blue Bottle",
+        category: "Food",
+        paymentMethod: "HDFC Card",
+        amount: 123456.78,
+        note: "Morning coffee",
+      },
+    ]);
+  });
+
+  it("uses empty strings for missing merchant/category/payment/note", () => {
+    const [row] = expenseExportRows([
+      {
+        amount_paise: 5000, // ₹50.00
+        spent_at: "2026-01-31T20:00:00.000Z", // 1 Feb 2026 IST (UTC+5:30 rollover)
+        merchant: null,
+        note: null,
+        categories: null,
+        payment_methods: null,
+      },
+    ]);
+    expect(row).toEqual({
+      date: "1 Feb 2026",
+      merchant: "",
+      category: "",
+      paymentMethod: "",
+      amount: 50,
+      note: "",
+    });
+  });
+
+  it("reads joined names when relations arrive as arrays (PostgREST embedding)", () => {
+    const [row] = expenseExportRows([
+      {
+        amount_paise: 10000, // ₹100.00 — a split expense
+        spent_at: "2026-05-10T10:00:00.000Z",
+        merchant: "Dinner",
+        note: "",
+        categories: [{ name: "Dining" }],
+        payment_methods: [{ name: "UPI" }],
+      },
+    ]);
+    expect(row.category).toBe("Dining");
+    expect(row.paymentMethod).toBe("UPI");
+    expect(row.amount).toBe(100);
+    expect(row.merchant).toBe("Dinner");
   });
 });
