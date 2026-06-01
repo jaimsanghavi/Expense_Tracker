@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,6 +287,7 @@ export function ExpenseForm({
         }
       }
 
+      toast.success("Expense added");
       router.push("/expenses");
     });
   }

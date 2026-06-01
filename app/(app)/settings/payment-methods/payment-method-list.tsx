@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Plus, Pencil, Trash2, CreditCard, Smartphone, Banknote, Wallet, Building2, Globe, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,11 +111,14 @@ export function PaymentMethodList({
       }
 
       if (!result?.error) {
+        toast.success(editing ? "Payment method updated" : "Payment method added");
         setDialogOpen(false);
         setEditing(null);
         const { getPaymentMethods } = await import("./actions");
         const updated = await getPaymentMethods();
         setMethods(updated);
+      } else {
+        toast.error("Couldn't save payment method");
       }
     });
   }
@@ -122,8 +126,13 @@ export function PaymentMethodList({
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this payment method?")) return;
     startTransition(async () => {
-      await deletePaymentMethod(id);
-      setMethods((prev) => prev.filter((m) => m.id !== id));
+      try {
+        await deletePaymentMethod(id);
+        setMethods((prev) => prev.filter((m) => m.id !== id));
+        toast.success("Payment method deleted");
+      } catch {
+        toast.error("Couldn't delete payment method");
+      }
     });
   }
 

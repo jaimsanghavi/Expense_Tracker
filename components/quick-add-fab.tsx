@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Plus, IndianRupee, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export function QuickAddFab({ categories }: QuickAddProps) {
         return;
       }
 
+      toast.success("Expense added");
       reset();
       setOpen(false);
       router.refresh();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,10 +112,13 @@ export function RecurringList({
       }
 
       if (!result?.error) {
+        toast.success(editing ? "Recurring expense updated" : "Recurring expense added");
         setDialogOpen(false);
         setEditing(null);
         const updated = await getRecurringExpenses();
         setItems(updated);
+      } else {
+        toast.error("Couldn't save recurring expense");
       }
     });
   }
@@ -123,8 +127,13 @@ export function RecurringList({
     if (!confirm("Are you sure you want to delete this recurring expense?"))
       return;
     startTransition(async () => {
-      await deleteRecurringExpense(id);
-      setItems((prev) => prev.filter((r) => r.id !== id));
+      try {
+        await deleteRecurringExpense(id);
+        setItems((prev) => prev.filter((r) => r.id !== id));
+        toast.success("Recurring expense deleted");
+      } catch {
+        toast.error("Couldn't delete recurring expense");
+      }
     });
   }
 

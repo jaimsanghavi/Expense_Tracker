@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -104,6 +105,7 @@ export function ExpenseDetail({
       if (result?.error) {
         setError(result.error as Record<string, string[]>);
       } else {
+        toast.success("Expense updated");
         setIsEditing(false);
         router.refresh();
       }
@@ -111,16 +113,27 @@ export function ExpenseDetail({
   }
 
   function handleDelete() {
+    if (!confirm("Delete this expense? This can't be undone.")) return;
     startTransition(async () => {
-      await deleteExpense(expense.id);
-      router.push("/expenses");
+      try {
+        await deleteExpense(expense.id);
+        toast.success("Expense deleted");
+        router.push("/expenses");
+      } catch {
+        toast.error("Couldn't delete expense");
+      }
     });
   }
 
   function handleShareStatus(shareId: string, status: "paid" | "gift") {
     startTransition(async () => {
-      await updateShareStatus(shareId, status);
-      router.refresh();
+      try {
+        await updateShareStatus(shareId, status);
+        toast.success(status === "paid" ? "Marked as paid" : "Marked as gift");
+        router.refresh();
+      } catch {
+        toast.error("Couldn't update share");
+      }
     });
   }
 

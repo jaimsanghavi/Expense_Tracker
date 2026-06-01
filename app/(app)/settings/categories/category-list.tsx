@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,12 +62,15 @@ export function CategoryList({
       }
 
       if (!result?.error) {
+        toast.success(editing ? "Category updated" : "Category added");
         setDialogOpen(false);
         setEditing(null);
         // Refresh list by re-fetching (relies on revalidatePath on server)
         const { getCategories } = await import("./actions");
         const updated = await getCategories();
         setCategories(updated);
+      } else {
+        toast.error("Couldn't save category");
       }
     });
   }
@@ -74,8 +78,13 @@ export function CategoryList({
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this category?")) return;
     startTransition(async () => {
-      await deleteCategory(id);
-      setCategories((prev) => prev.filter((c) => c.id !== id));
+      try {
+        await deleteCategory(id);
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        toast.success("Category deleted");
+      } catch {
+        toast.error("Couldn't delete category");
+      }
     });
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { User, Mail, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,12 @@ export function ProfileForm({ email, displayName, monthlyBudgetPaise }: ProfileF
 
   async function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      await updateProfile(formData);
+      const result = await updateProfile(formData);
+      if (result?.success) {
+        toast.success("Profile saved");
+      } else if (result?.error) {
+        toast.error(result.error);
+      }
     });
   }
 
